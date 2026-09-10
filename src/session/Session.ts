@@ -23,6 +23,8 @@ import { ige256Encrypt, ige256Decrypt } from '../crypto/aes.js'
 import { SecurityCheckMismatch, raise_it } from '../errors/index.js'
 import { Connection } from '../connection/index.js'
 import { BinaryReader, BinaryWriter, TLObject, Message, MsgContainer, GzipPacked } from '../raw/index.js'
+import { Ping } from '../raw/functions/ping.js'
+import { PingDelayDisconnect } from '../raw/functions/ping_delay_disconnect.js'
 import { AuthKey } from './AuthKey.js'
 
 export interface PendingRequest {
@@ -45,6 +47,7 @@ export class Session extends EventEmitter {
   private _lastMsgId: bigint = 0n
   private readonly _pendingRequests: Map<bigint, PendingRequest> = new Map()
   private _onPayloadBound: (payload: Buffer) => void
+  private _pingTimer: NodeJS.Timeout | null = null
 
   constructor(connection: Connection, authKey: AuthKey, salt: bigint = 0n) {
     super()
@@ -75,11 +78,37 @@ export class Session extends EventEmitter {
     }
   }
 
+  public startPingLoop(): void {
+    if (this._pingTimer) return
+    this._pingTimer = setInterval(async () => {
+      if (!this.connection.isConnected) return
+      try {
+        await this.send(new PingDelayDisconnect(0n, 25))
+      } catch {
+        // Ignore ping loop error
+      }
+    }, 5000)
+  }
+
+  public stopPingLoop(): void {
+    if (this._pingTimer) {
+      clearInterval(this._pingTimer)
+      this._pingTimer = null
+    }
+  }
+
   public async start(): Promise<void> {
     await this.connect()
+    try {
+      await this.send(new Ping(0n))
+    } catch {
+      // Ignore ping error if any
+    }
+    this.startPingLoop()
   }
 
   public async stop(): Promise<void> {
+    this.stopPingLoop()
     this.close()
   }
 
@@ -174,7 +203,18 @@ export class Session extends EventEmitter {
     const packed = this.pack(message)
 
     return new Promise<T>((resolve, reject) => {
-      this._pendingRequests.set(msgId, { msgId, resolve, reject })
+      this._pendingRequests.set(msgId, {
+        msgId,
+        resolve: (result: any) => {
+          if (result && (result.CONSTRUCTOR_ID === 0xedab447b || result.QUALNAME === 'types.BadServerSalt')) {
+            this.salt = result.new_server_salt ?? result.newServerSalt
+            this.send<T>(query).then(resolve, reject)
+          } else {
+            resolve(result)
+          }
+        },
+        reject,
+      })
       this.connection.send(packed).catch((err) => {
         this._pendingRequests.delete(msgId)
         reject(err)
@@ -203,18 +243,70 @@ export class Session extends EventEmitter {
       return
     }
 
-    // Handle RPC Result (Constructor 0xF35C6D01)
-    if ((body as any).CONSTRUCTOR_ID === 0xf35c6d01) {
-      const reqMsgId = (body as any).reqMsgId
+    const cId = (body as any).CONSTRUCTOR_ID ?? (body.constructor as any).ID
+
+    // Handle NewSessionCreated (0x9ec20908)
+    if (cId === 0x9ec20908) {
+      const serverSalt = (body as any).server_salt ?? (body as any).serverSalt
+      if (serverSalt !== undefined) {
+        this.salt = serverSalt
+      }
+      return
+    }
+
+    // Handle BadServerSalt (0xedab447b)
+    if (cId === 0xedab447b) {
+      const badMsgId = (body as any).bad_msg_id ?? (body as any).badMsgId
+      const newSalt = (body as any).new_server_salt ?? (body as any).newServerSalt
+      if (newSalt !== undefined) {
+        this.salt = newSalt
+      }
+      const pending = this._pendingRequests.get(badMsgId)
+      if (pending) {
+        this._pendingRequests.delete(badMsgId)
+        pending.resolve(body)
+      }
+      return
+    }
+
+    // Handle BadMsgNotification (0xa7eff811)
+    if (cId === 0xa7eff811) {
+      const badMsgId = (body as any).bad_msg_id ?? (body as any).badMsgId
+      const errorCode = (body as any).error_code ?? (body as any).errorCode
+      const pending = this._pendingRequests.get(badMsgId)
+      if (pending) {
+        this._pendingRequests.delete(badMsgId)
+        pending.reject(new Error(`MTProto BadMsgNotification: error_code=${errorCode}`))
+      }
+      return
+    }
+
+    // Handle Pong (0x347773c5)
+    if (cId === 0x347773c5) {
+      const reqMsgId = (body as any).msg_id ?? (body as any).msgId
+      const pending = this._pendingRequests.get(reqMsgId)
+      if (pending) {
+        this._pendingRequests.delete(reqMsgId)
+        pending.resolve(body)
+      }
+      return
+    }
+
+    // Handle RPC Result (0xf35c6d01)
+    if (cId === 0xf35c6d01) {
+      const reqMsgId = (body as any).req_msg_id ?? (body as any).reqMsgId
       const result = (body as any).result
       const pending = this._pendingRequests.get(reqMsgId)
 
       if (pending) {
         this._pendingRequests.delete(reqMsgId)
-        // Check if result is an RPC error constructor (0x2144CA19)
-        if (result && result.CONSTRUCTOR_ID === 0x2144ca19) {
+        const resCId = result ? ((result as any).CONSTRUCTOR_ID ?? (result.constructor as any).ID) : undefined
+        // Check if result is an RPC error constructor (0x2144ca19)
+        if (resCId === 0x2144ca19) {
+          const errCode = result.error_code ?? result.errorCode
+          const errMsg = result.error_message ?? result.errorMessage
           try {
-            raise_it(result.errorCode, result.errorMessage)
+            raise_it(errCode, errMsg)
           } catch (err) {
             pending.reject(err)
           }
@@ -225,6 +317,33 @@ export class Session extends EventEmitter {
       return
     }
 
+    // Handle Updates containers (types.Updates, types.UpdatesCombined, etc.)
+    if (Array.isArray((body as any).updates)) {
+      const usersMap = new Map<bigint, any>()
+      const chatsMap = new Map<bigint, any>()
+      if (Array.isArray((body as any).users)) {
+        for (const u of (body as any).users) {
+          if (u && u.id !== undefined) usersMap.set(BigInt(u.id), u)
+        }
+      }
+      if (Array.isArray((body as any).chats)) {
+        for (const c of (body as any).chats) {
+          if (c && c.id !== undefined) chatsMap.set(BigInt(c.id), c)
+        }
+      }
+      for (const u of (body as any).updates) {
+        this.emit('update', u, usersMap, chatsMap)
+      }
+      return
+    }
+
+    // Handle UpdateShort
+    if ((body as any).update) {
+      this.emit('update', (body as any).update, new Map(), new Map())
+      return
+    }
+
+    this.emit('update', body, new Map(), new Map())
     this.emit('message', body, msgId)
   }
 

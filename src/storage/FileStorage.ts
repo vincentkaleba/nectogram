@@ -41,7 +41,12 @@ export class FileStorage extends Storage {
     this.filePath = resolve(filePath.endsWith('.session') ? filePath : `${filePath}.session`)
   }
 
+  private _opened: boolean = false
+
   public override async open(): Promise<void> {
+    if (this._opened) return
+    this._opened = true
+
     try {
       const data = await readFile(this.filePath, 'utf8')
       const json = JSON.parse(data)

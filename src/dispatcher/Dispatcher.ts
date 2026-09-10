@@ -70,6 +70,7 @@ export class Dispatcher {
    * Feed an incoming raw update with user and chat dictionaries into the dispatch queue.
    */
   public feedUpdate(update: any, users: Map<bigint, any> = new Map(), chats: Map<bigint, any> = new Map()): void {
+    console.log(`⚡ [Dispatcher] Received update: ${update?.QUALNAME ?? update?.constructor?.name}`)
     if (this._stopped) return
     this._updatesQueue.push([update, users, chats])
     setImmediate(() => {
@@ -197,6 +198,54 @@ export class Dispatcher {
         const parsed = Message._parse(update.message, users, chats)
         return { parsedUpdate: parsed, handlerClass: MessageHandler }
       }
+    } else if (update instanceof raw.types.UpdateShortMessage) {
+      const rawMsg = new raw.types.Message(
+        update.id,
+        new raw.types.PeerUser(update.user_id),
+        update.date,
+        update.message,
+        update.out,
+        update.mentioned,
+        update.media_unread,
+        update.silent,
+        false, false, false, false, false, false, false, false, false, false, false,
+        new raw.types.PeerUser(update.user_id),
+        undefined, undefined, undefined,
+        update.fwd_from,
+        update.via_bot_id,
+        undefined, undefined,
+        update.reply_to,
+        undefined, undefined,
+        update.entities,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        update.ttl_period
+      )
+      const parsed = Message._parse(rawMsg, users, chats)
+      return { parsedUpdate: parsed, handlerClass: MessageHandler }
+    } else if (update instanceof raw.types.UpdateShortChatMessage) {
+      const rawMsg = new raw.types.Message(
+        update.id,
+        new raw.types.PeerChat(update.chat_id),
+        update.date,
+        update.message,
+        update.out,
+        update.mentioned,
+        update.media_unread,
+        update.silent,
+        false, false, false, false, false, false, false, false, false, false, false,
+        new raw.types.PeerUser(update.from_id),
+        undefined, undefined, undefined,
+        update.fwd_from,
+        update.via_bot_id,
+        undefined, undefined,
+        update.reply_to,
+        undefined, undefined,
+        update.entities,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        update.ttl_period
+      )
+      const parsed = Message._parse(rawMsg, users, chats)
+      return { parsedUpdate: parsed, handlerClass: MessageHandler }
     } else if (update instanceof raw.types.UpdateBotCallbackQuery || update instanceof raw.types.UpdateInlineBotCallbackQuery) {
       const parsed = CallbackQuery._parse(update as any, users)
       return { parsedUpdate: parsed, handlerClass: CallbackQueryHandler }

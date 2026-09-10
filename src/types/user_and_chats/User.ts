@@ -64,7 +64,9 @@ export class User {
 
   public get fullName(): string | undefined {
     const parts = [this.firstName, this.lastName].filter(Boolean)
-    return parts.length > 0 ? parts.join(' ') : undefined
+    if (parts.length > 0) return parts.join(' ')
+    if (this.username) return `@${this.username}`
+    return undefined
   }
 
   /**

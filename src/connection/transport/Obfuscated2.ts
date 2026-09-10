@@ -69,10 +69,10 @@ export abstract class TCPObfuscated extends TCP {
       reversedTail[i] = nonce[55 - i]
     }
 
-    const encryptKey = sha256(nonce.subarray(8, 40))
+    const encryptKey = Buffer.from(nonce.subarray(8, 40))
     const encryptIv = Buffer.from(nonce.subarray(40, 56))
 
-    const decryptKey = sha256(reversedTail.subarray(0, 32))
+    const decryptKey = Buffer.from(reversedTail.subarray(0, 32))
     const decryptIv = Buffer.from(reversedTail.subarray(32, 48))
 
     this.cipher = createCipheriv('aes-256-ctr', encryptKey, encryptIv)

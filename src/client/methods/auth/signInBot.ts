@@ -21,29 +21,46 @@ import { User } from '../../../types/index.js'
 import type { Client } from '../../Client.js'
 
 export async function signInBot(this: Client, botToken: string): Promise<User> {
-  const authRes = await this.invoke(
-    new raw.functions.auth.ImportBotAuthorization(
-      0, // flags
-      this.apiId,
-      this.apiHash,
-      botToken
-    )
-  )
+  while (true) {
+    try {
+      const authRes = await this.invoke(
+        new raw.functions.auth.ImportBotAuthorization(
+          0, // flags
+          this.apiId,
+          this.apiHash,
+          botToken
+        )
+      )
 
-  if (authRes && authRes.user && authRes.user instanceof raw.types.User) {
-    const user = User._parse(authRes.user)
-    this.me = user
-    await this.storage.setUserId(user.id)
-    await this.storage.setIsBot(true)
-    await this.storage.updatePeer({
-      id: user.id,
-      accessHash: authRes.user.access_hash ?? 0n,
-      type: 'user',
-      username: user.username,
-      phone: user.phone,
-    })
-    return user
+      if (authRes && authRes.user && authRes.user instanceof raw.types.User) {
+        const user = User._parse(authRes.user)
+        this.me = user
+        await this.storage.setUserId(user.id)
+        await this.storage.setIsBot(true)
+        await this.storage.updatePeer({
+          id: user.id,
+          accessHash: authRes.user.access_hash ?? 0n,
+          type: 'user',
+          username: user.username,
+          phone: user.phone,
+        })
+        return user
+      }
+
+      return await this.getMe()
+    } catch (err: any) {
+      if (err && typeof err.value === 'string' && err.value.startsWith('USER_MIGRATE_')) {
+        const targetDc = Number(err.value.split('_')[2])
+        if (!isNaN(targetDc) && targetDc > 0) {
+          console.log(`🔄 Migrating session to target DC ${targetDc}...`)
+          await this.disconnect()
+          await this.storage.setDcId(targetDc)
+          await this.storage.setAuthKey(null)
+          await this.connect()
+          continue
+        }
+      }
+      throw err
+    }
   }
-
-  return await this.getMe()
 }

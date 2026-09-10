@@ -29,8 +29,12 @@ export abstract class TLObject {
 
     abstract write(): Buffer
 
-    static read(r: BinaryReader): TLObject {
+    static read(r: BinaryReader): any {
         const id = r.readInt32(false)
+        if (id === 0x1cb5c415) {
+            const count = r.readInt32(false)
+            return Array.from({ length: count }, () => TLObject.read(r))
+        }
         const ctor = objects.get(id)
 
         if (!ctor) {

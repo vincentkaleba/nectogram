@@ -18,11 +18,14 @@
 
 import * as raw from '../../../raw/index.js'
 import { Message, InlineKeyboardMarkup } from '../../../types/index.js'
+import { parseText, ParseMode } from '../../../parser/index.js'
 import type { Client } from '../../Client.js'
 import type { PeerLike } from '../../PeerResolver.js'
 
 export interface EditMessageOptions {
   replyMarkup?: InlineKeyboardMarkup
+  parseMode?: ParseMode
+  entities?: raw.base.MessageEntity[]
 }
 
 export async function editMessageText(
@@ -33,6 +36,17 @@ export async function editMessageText(
   options?: EditMessageOptions,
 ): Promise<Message> {
   const peer = await this.peerResolver.resolvePeer(chatId)
+
+  let cleanText = text
+  let entities: raw.base.MessageEntity[] | undefined = options?.entities
+
+  if (!entities && options?.parseMode !== 'raw') {
+    const parsed = parseText(text, options?.parseMode ?? (this as any).parseMode ?? 'markdown')
+    cleanText = parsed.text
+    if (parsed.entities.length > 0) {
+      entities = parsed.entities
+    }
+  }
 
   let replyMarkup: raw.base.ReplyMarkup | undefined
   if (options?.replyMarkup) {
@@ -45,9 +59,10 @@ export async function editMessageText(
       messageId,
       undefined,
       undefined,
-      text,
+      cleanText,
       undefined,
-      replyMarkup
+      replyMarkup,
+      entities
     )
   )
 

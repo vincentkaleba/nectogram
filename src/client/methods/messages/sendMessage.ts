@@ -18,12 +18,15 @@
 
 import * as raw from '../../../raw/index.js'
 import { Message, InlineKeyboardMarkup } from '../../../types/index.js'
+import { parseText, ParseMode } from '../../../parser/index.js'
 import type { Client } from '../../Client.js'
 import type { PeerLike } from '../../PeerResolver.js'
 
 export interface SendMessageOptions {
   replyToMessageId?: number
   replyMarkup?: InlineKeyboardMarkup
+  parseMode?: ParseMode
+  entities?: raw.base.MessageEntity[]
 }
 
 export async function sendMessage(
@@ -33,6 +36,17 @@ export async function sendMessage(
   options?: SendMessageOptions,
 ): Promise<Message> {
   const peer = await this.peerResolver.resolvePeer(chatId)
+
+  let cleanText = text
+  let entities: raw.base.MessageEntity[] | undefined = options?.entities
+
+  if (!entities && options?.parseMode !== 'raw') {
+    const parsed = parseText(text, options?.parseMode ?? (this as any).parseMode ?? 'markdown')
+    cleanText = parsed.text
+    if (parsed.entities.length > 0) {
+      entities = parsed.entities
+    }
+  }
 
   let replyTo: raw.base.InputReplyTo | undefined
   if (options?.replyToMessageId) {
@@ -49,11 +63,12 @@ export async function sendMessage(
   const res = await this.invoke(
     new raw.functions.messages.SendMessage(
       peer,
-      text,
+      cleanText,
       randomId,
       undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       replyTo,
-      replyMarkup
+      replyMarkup,
+      entities
     )
   )
 

@@ -63,23 +63,31 @@ export class Message {
     chatsMap?: Map<bigint, Chat>
   ): Message {
     let fromUser: User | undefined
-    if (rawMsg.from_id && rawMsg.from_id instanceof raw.types.PeerUser && usersMap) {
-      fromUser = usersMap.get(rawMsg.from_id.user_id)
+    if (rawMsg.from_id && rawMsg.from_id instanceof raw.types.PeerUser) {
+      const u = usersMap?.get(rawMsg.from_id.user_id)
+      if (u) {
+        fromUser = u instanceof User ? u : User._parse(u as any)
+      } else {
+        fromUser = new User({ id: rawMsg.from_id.user_id, isBot: false })
+      }
     }
 
     let chat: Chat
-    if (rawMsg.peer_id instanceof raw.types.PeerUser && usersMap) {
-      const u = usersMap.get(rawMsg.peer_id.user_id)
+    if (rawMsg.peer_id instanceof raw.types.PeerUser) {
+      const u = usersMap?.get(rawMsg.peer_id.user_id)
+      const parsedUser = u ? (u instanceof User ? u : User._parse(u as any)) : undefined
       chat = new Chat({
         id: rawMsg.peer_id.user_id,
         type: 'private',
-        title: u?.fullName ?? u?.username,
-        username: u?.username,
+        title: parsedUser?.fullName ?? parsedUser?.username,
+        username: parsedUser?.username,
       })
-    } else if (rawMsg.peer_id instanceof raw.types.PeerChannel && chatsMap) {
-      chat = chatsMap.get(rawMsg.peer_id.channel_id) ?? new Chat({ id: rawMsg.peer_id.channel_id, type: 'channel' })
-    } else if (rawMsg.peer_id instanceof raw.types.PeerChat && chatsMap) {
-      chat = chatsMap.get(rawMsg.peer_id.chat_id) ?? new Chat({ id: rawMsg.peer_id.chat_id, type: 'group' })
+    } else if (rawMsg.peer_id instanceof raw.types.PeerChannel) {
+      const c = chatsMap?.get(rawMsg.peer_id.channel_id)
+      chat = c ? (c instanceof Chat ? c : Chat._parse(c as any)) : new Chat({ id: rawMsg.peer_id.channel_id, type: 'channel' })
+    } else if (rawMsg.peer_id instanceof raw.types.PeerChat) {
+      const c = chatsMap?.get(rawMsg.peer_id.chat_id)
+      chat = c ? (c instanceof Chat ? c : Chat._parse(c as any)) : new Chat({ id: rawMsg.peer_id.chat_id, type: 'group' })
     } else {
       chat = new Chat({ id: 0n, type: 'private' })
     }

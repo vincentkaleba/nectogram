@@ -18,6 +18,12 @@ resources/.arch-internal-preview.css
 ref/
 planning/
 
+# Sessions & Local Environment
+*.session
+*.session-journal
+.env
+.env.*
+
 # Node
 node_modules/
 
