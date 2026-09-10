@@ -4,6 +4,7 @@
 
 export * as raw from './raw/index.js';
 export * as crypto from './crypto/index.js';
+export * as errors from './errors/index.js';
 export * as connection from './connection/index.js';
 export * as session from './session/index.js';
 export * as storage from './storage/index.js';

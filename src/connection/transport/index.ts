@@ -16,11 +16,8 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-export * from './transport/index.js'
-export {
-  Connection,
-  type ConnectionOptions,
-  type DCOption,
-  DEFAULT_PRODUCTION_DCS,
-  DEFAULT_TEST_DCS
-} from './Connection.js'
+export { TCP, type TCPConnectOptions } from './TCP.js'
+export { TCPAbridged } from './Abridged.js'
+export { TCPIntermediate } from './Intermediate.js'
+export { TCPIntermediatePadded } from './PaddedIntermediate.js'
+export { TCPObfuscated, TCPAbridgedO, TCPIntermediateO, generateObfuscated2Nonce } from './Obfuscated2.js'
