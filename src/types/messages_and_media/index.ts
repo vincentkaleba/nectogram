@@ -16,6 +16,4 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-export * from './user_and_chats/index.js'
-export * from './messages_and_media/index.js'
-export * from './bots_and_keyboards/index.js'
+export { Message, type MessageOptions } from './Message.js'

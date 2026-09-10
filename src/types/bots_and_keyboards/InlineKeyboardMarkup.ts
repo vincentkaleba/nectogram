@@ -16,6 +16,20 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-export * from './user_and_chats/index.js'
-export * from './messages_and_media/index.js'
-export * from './bots_and_keyboards/index.js'
+import * as raw from '../../raw/index.js'
+import { InlineKeyboardButton } from './InlineKeyboardButton.js'
+
+export class InlineKeyboardMarkup {
+  public readonly inlineKeyboard: InlineKeyboardButton[][]
+
+  constructor(inlineKeyboard: InlineKeyboardButton[][]) {
+    this.inlineKeyboard = inlineKeyboard
+  }
+
+  public writeTL(): raw.types.ReplyInlineMarkup {
+    const rows = this.inlineKeyboard.map((row) =>
+      new raw.types.KeyboardInlineButtonRow(row.map((btn) => btn.writeTL()))
+    )
+    return new raw.types.ReplyInlineMarkup(rows)
+  }
+}
