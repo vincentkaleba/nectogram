@@ -43,8 +43,8 @@ export function kdf(authKey: Buffer, msgKey: Buffer, outgoing: boolean): { key: 
   // sha256_a = SHA256(msg_key + auth_key[x : x + 36])
   const sha256A = sha256(Buffer.concat([msgKey, authKey.subarray(x, x + 36)]))
 
-  // sha256_b = SHA256(auth_key[x + 36 : x + 68] + msg_key)
-  const sha256B = sha256(Buffer.concat([authKey.subarray(x + 36, x + 68), msgKey]))
+  // sha256_b = SHA256(auth_key[x + 40 : x + 76] + msg_key)
+  const sha256B = sha256(Buffer.concat([authKey.subarray(x + 40, x + 76), msgKey]))
 
   // aes_key = sha256_a[0:8] + sha256_b[8:24] + sha256_a[24:32]
   const key = Buffer.concat([

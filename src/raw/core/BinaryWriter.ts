@@ -32,13 +32,13 @@ export class BinaryWriter {
 
     writeInt64(val: bigint): this {
         const buf = Buffer.allocUnsafe(8)
-        buf.writeBigInt64LE(val, 0)
+        buf.writeBigInt64LE(BigInt.asIntN(64, val), 0)
         return this.write(buf)
     }
 
     writeUInt64(val: bigint): this {
         const buf = Buffer.allocUnsafe(8)
-        buf.writeBigUInt64LE(val, 0)
+        buf.writeBigUInt64LE(BigInt.asUintN(64, val), 0)
         return this.write(buf)
     }
 
