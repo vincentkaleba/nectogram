@@ -247,7 +247,6 @@ export const Filters = {
   ): Filter => {
     const cmdList = Array.isArray(commands) ? commands : [commands]
     const normalizedCmds = new Set(cmdList.map((c) => (caseSensitive ? c : c.toLowerCase())))
-
     const prefixList = Array.isArray(prefixes) ? prefixes : [prefixes]
 
     return createFilter((client, update) => {
@@ -270,17 +269,11 @@ export const Filters = {
       const withoutPrefix = text.substring(matchedPrefix.length)
       const botUsername = client?.me?.username ? client.me.username.toLowerCase() : ''
 
-      const commandRegex = /^(?:"([^"]+)"|'([^']+)'|(\S+))/g
-      const parts: string[] = []
-      let match: RegExpExecArray | null
+      const spaceIndex = withoutPrefix.search(/\s/)
+      const firstWord = spaceIndex === -1 ? withoutPrefix : withoutPrefix.substring(0, spaceIndex)
+      const restText = spaceIndex === -1 ? '' : withoutPrefix.substring(spaceIndex).trim()
 
-      while ((match = commandRegex.exec(withoutPrefix)) !== null) {
-        parts.push(match[1] ?? match[2] ?? match[3] ?? '')
-      }
-
-      if (parts.length === 0) return false
-
-      let rawCmd = parts[0]
+      let rawCmd = firstWord
       if (rawCmd.includes('@')) {
         const [cmdName, targetBot] = rawCmd.split('@')
         if (botUsername && targetBot.toLowerCase() !== botUsername) {
@@ -292,7 +285,17 @@ export const Filters = {
       const lookupCmd = caseSensitive ? rawCmd : rawCmd.toLowerCase()
       if (!normalizedCmds.has(lookupCmd)) return false
 
-      msg.command = [rawCmd, ...parts.slice(1)]
+      const args: string[] = []
+      if (restText) {
+        const argRegex = /"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'|(\S+)/g
+        let match: RegExpExecArray | null
+        while ((match = argRegex.exec(restText)) !== null) {
+          const val = match[1] ?? match[2] ?? match[3] ?? ''
+          args.push(val.replace(/\\(["'])/g, '$1'))
+        }
+      }
+
+      msg.command = [rawCmd, ...args]
       return true
     }, `command(${cmdList.join(',')})`)
   },

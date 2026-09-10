@@ -143,15 +143,16 @@ describe('Dispatcher & Filters Module (Step 7)', () => {
       const dispatcher = new Dispatcher({})
       const order: string[] = []
 
-      // Group 0 handler 1
+      // Group 0 handler 1: throws ContinuePropagation to allow next handler in group 0
       dispatcher.addHandler(
         new MessageHandler(async () => {
           order.push('g0_h1')
+          throw new ContinuePropagation()
         }),
         0
       )
 
-      // Group 0 handler 2 (should stop propagation)
+      // Group 0 handler 2: throws StopPropagation
       dispatcher.addHandler(
         new MessageHandler(async () => {
           order.push('g0_h2')
