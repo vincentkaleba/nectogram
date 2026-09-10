@@ -75,6 +75,18 @@ export class Session extends EventEmitter {
     }
   }
 
+  public async start(): Promise<void> {
+    await this.connect()
+  }
+
+  public async stop(): Promise<void> {
+    this.close()
+  }
+
+  public async invoke<T = any>(query: TLObject, _retries: number = 3): Promise<T> {
+    return await this.send<T>(query)
+  }
+
   /**
    * Generates a strictly monotonic client message ID (divisible by 4).
    */

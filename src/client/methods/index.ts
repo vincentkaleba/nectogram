@@ -16,6 +16,9 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-export * from './Client.js'
-export * from './PeerResolver.js'
-export * from './methods/index.js'
+export * from './auth/getMe.js'
+export * from './auth/signInBot.js'
+export * from './messages/sendMessage.js'
+export * from './messages/editMessageText.js'
+export * from './messages/deleteMessages.js'
+export * from './chats/getChat.js'
