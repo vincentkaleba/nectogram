@@ -41,6 +41,8 @@ export class Message {
   public readonly text?: string
   public readonly replyToMessageId?: number
   public readonly raw?: raw.types.Message
+  public command?: string[]
+  public matches?: any[]
 
   constructor(options: MessageOptions) {
     this.id = options.id

@@ -16,6 +16,12 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-export * from './Dispatcher.js'
-export * from './errors.js'
-export * from './handlers/index.js'
+import { Handler } from './Handler.js'
+import { Filter } from '../../filters.js'
+import { Message } from '../../types/index.js'
+
+export class MessageHandler extends Handler<Message> {
+  constructor(callback: (client: any, message: Message) => any, filter?: Filter) {
+    super(callback, filter)
+  }
+}

@@ -16,6 +16,35 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-export * from './Dispatcher.js'
-export * from './errors.js'
-export * from './handlers/index.js'
+import { Handler } from './Handler.js'
+
+export type ErrorClass = new (...args: any[]) => Error
+
+export class ErrorHandler extends Handler<Error> {
+  public exceptions: ErrorClass[]
+
+  constructor(
+    callback: (
+      client: any,
+      error: Error,
+      updateHandler: Handler,
+      update: any,
+      users: Map<bigint, any>,
+      chats: Map<bigint, any>,
+    ) => any,
+    exceptions?: ErrorClass | ErrorClass[],
+  ) {
+    super(callback)
+    if (!exceptions) {
+      this.exceptions = [Error]
+    } else if (Array.isArray(exceptions)) {
+      this.exceptions = exceptions
+    } else {
+      this.exceptions = [exceptions]
+    }
+  }
+
+  public matchesError(err: Error): boolean {
+    return this.exceptions.some((cls) => err instanceof cls)
+  }
+}

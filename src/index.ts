@@ -11,3 +11,4 @@ export * as storage from './storage/index.js';
 export * as dispatcher from './dispatcher/index.js';
 export * as client from './client/index.js';
 export * as types from './types/index.js';
+export * from './filters.js';

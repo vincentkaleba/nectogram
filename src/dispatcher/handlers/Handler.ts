@@ -16,6 +16,19 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-export * from './Dispatcher.js'
-export * from './errors.js'
-export * from './handlers/index.js'
+import { Filter } from '../../filters.js'
+
+export abstract class Handler<T = any> {
+  public callback: (...args: any[]) => any
+  public filter?: Filter
+
+  constructor(callback: (...args: any[]) => any, filter?: Filter) {
+    this.callback = callback
+    this.filter = filter
+  }
+
+  public async check(client: any, update: T): Promise<boolean> {
+    if (!this.filter) return true
+    return await this.filter(client, update)
+  }
+}

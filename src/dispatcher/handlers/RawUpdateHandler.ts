@@ -16,6 +16,14 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-export * from './Dispatcher.js'
-export * from './errors.js'
-export * from './handlers/index.js'
+import { Handler } from './Handler.js'
+import { Filter } from '../../filters.js'
+
+export class RawUpdateHandler extends Handler<any> {
+  constructor(
+    callback: (client: any, update: any, users: Map<bigint, any>, chats: Map<bigint, any>) => any,
+    filter?: Filter,
+  ) {
+    super(callback, filter)
+  }
+}

@@ -39,6 +39,7 @@ export class CallbackQuery {
   public readonly data?: string
   public readonly chatInstance?: bigint
   public readonly raw?: raw.types.UpdateBotCallbackQuery | raw.types.UpdateInlineBotCallbackQuery
+  public matches?: any[]
 
   constructor(options: CallbackQueryOptions) {
     this.id = options.id.toString()
