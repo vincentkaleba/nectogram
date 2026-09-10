@@ -24,6 +24,7 @@ export interface Filter {
   or(other: Filter): Filter
   invert(): Filter
   name?: string
+  filterName?: string
 }
 
 export function createFilter(func: FilterFn, name?: string): Filter {
@@ -31,7 +32,12 @@ export function createFilter(func: FilterFn, name?: string): Filter {
     return Boolean(await func(client, update))
   }
 
-  filter.name = name ?? func.name ?? 'CustomFilter'
+  const filterName = name ?? func.name ?? 'CustomFilter'
+  try {
+    Object.defineProperty(filter, 'name', { value: filterName, writable: true, configurable: true })
+  } catch {
+    filter.filterName = filterName
+  }
 
   filter.and = (other: Filter): Filter => {
     return createFilter(async (client: any, update: any) => {
