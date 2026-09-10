@@ -91,14 +91,22 @@ export abstract class Storage {
    */
   public async importSessionString(sessionString: string): Promise<void> {
     const buf = Buffer.from(sessionString, 'base64url')
-    if (buf.length < 271) {
-      throw new Error(`importSessionString: invalid session string length (${buf.length})`)
+    if (buf.length !== 271) {
+      throw new Error(`importSessionString: invalid session string length (${buf.length}, expected 271)`)
     }
 
     const dcId = buf.readUInt8(0)
+    if (dcId < 1 || dcId > 5) {
+      throw new Error(`importSessionString: invalid DC ID (${dcId})`)
+    }
+
     const apiId = buf.readUInt32BE(1)
     const testMode = buf.readUInt8(5) !== 0
     const authKeyBytes = Buffer.from(buf.subarray(6, 262))
+    if (authKeyBytes.length !== 256) {
+      throw new Error(`importSessionString: invalid AuthKey length (${authKeyBytes.length})`)
+    }
+
     const userId = buf.readBigUInt64BE(262)
     const isBot = buf.readUInt8(270) !== 0
 
