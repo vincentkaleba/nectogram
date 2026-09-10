@@ -16,7 +16,24 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-export { ige256Encrypt, ige256Decrypt, ctr256Encrypt, ctr256Decrypt } from './aes.js'
-export { rsaEncrypt, SERVER_PUBLIC_KEYS, modPow } from './rsa.js'
-export { factorizePQ, gcd, CURRENT_DH_PRIME } from './prime.js'
-export { kdf, sha1, sha256 } from './mtproto.js'
+export class TransportError extends Error {
+  readonly code: number
+
+  constructor(code: number, message: string) {
+    super(`Transport error [${code}]: ${message}`)
+    this.name = 'TransportError'
+    this.code = code
+  }
+}
+
+export class AuthKeyNotFound extends TransportError {
+  constructor() {
+    super(-404, 'Auth key not found on server')
+  }
+}
+
+export class TransportFlood extends TransportError {
+  constructor() {
+    super(-429, 'Transport flood limit exceeded')
+  }
+}
