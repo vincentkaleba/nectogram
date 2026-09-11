@@ -55,9 +55,30 @@ import {
   deleteMessages,
   forwardMessages,
   sendChatAction,
+  sendLocation,
+  sendContact,
+  sendDice,
+  sendPoll,
+  copyMessage,
+  readHistory,
+  pinChatMessage,
+  unpinChatMessage,
+  unpinAllChatMessages,
   getChat,
   getChatMembers,
+  getChatMember,
+  banChatMember,
+  unbanChatMember,
+  setChatTitle,
+  joinChat,
+  leaveChat,
   answerCallbackQuery,
+  setBotCommands,
+  getBotCommands,
+  deleteBotCommands,
+  getUsers,
+  blockUser,
+  unblockUser,
 } from './methods/index.js'
 
 import { parseText, ParseMode } from '../parser/index.js'
@@ -487,7 +508,28 @@ export class Client {
   public deleteMessages = deleteMessages.bind(this)
   public forwardMessages = forwardMessages.bind(this)
   public sendChatAction = sendChatAction.bind(this)
+  public sendLocation = sendLocation.bind(this)
+  public sendContact = sendContact.bind(this)
+  public sendDice = sendDice.bind(this)
+  public sendPoll = sendPoll.bind(this)
+  public copyMessage = copyMessage.bind(this)
+  public readHistory = readHistory.bind(this)
+  public pinChatMessage = pinChatMessage.bind(this)
+  public unpinChatMessage = unpinChatMessage.bind(this)
+  public unpinAllChatMessages = unpinAllChatMessages.bind(this)
   public getChat = getChat.bind(this)
   public getChatMembers = getChatMembers.bind(this)
+  public getChatMember = getChatMember.bind(this)
+  public banChatMember = banChatMember.bind(this)
+  public unbanChatMember = unbanChatMember.bind(this)
+  public setChatTitle = setChatTitle.bind(this)
+  public joinChat = joinChat.bind(this)
+  public leaveChat = leaveChat.bind(this)
   public answerCallbackQuery = answerCallbackQuery.bind(this)
+  public setBotCommands = setBotCommands.bind(this)
+  public getBotCommands = getBotCommands.bind(this)
+  public deleteBotCommands = deleteBotCommands.bind(this)
+  public getUsers = getUsers.bind(this)
+  public blockUser = blockUser.bind(this)
+  public unblockUser = unblockUser.bind(this)
 }
