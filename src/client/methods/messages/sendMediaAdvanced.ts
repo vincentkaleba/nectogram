@@ -14,6 +14,7 @@ export interface BaseMediaOptions {
   parseMode?: string | null
   hasSpoiler?: boolean
   ttlSeconds?: number
+  viewOnce?: boolean
   disableNotification?: boolean
   replyToMessageId?: number
   showCaptionAboveMedia?: boolean
@@ -27,11 +28,40 @@ export interface VideoMediaOptions extends BaseMediaOptions {
   videoCover?: string | Buffer
   videoTimestamp?: number
   supportsStreaming?: boolean
+  noSound?: boolean
+  fileName?: string
 }
 
 export interface DocumentMediaOptions extends BaseMediaOptions {
   mimeType?: string
   fileName?: string
+}
+
+async function resolveVideoCover(
+  client: Client,
+  peer: raw.base.InputPeer,
+  videoCover?: string | Buffer
+): Promise<raw.types.InputPhoto | undefined> {
+  if (!videoCover) return undefined
+
+  let media: any
+  if (typeof videoCover === 'string' && videoCover.match(/^https?:\/\//)) {
+    media = new raw.types.InputMediaPhotoExternal(videoCover)
+  } else {
+    const uploadedFile = await saveFile.call(client, videoCover)
+    media = new raw.types.InputMediaUploadedPhoto(uploadedFile)
+  }
+
+  const uploadedMedia = await client.invoke(
+    new raw.functions.messages.UploadMedia(peer, media)
+  )
+
+  if (uploadedMedia && 'photo' in uploadedMedia && (uploadedMedia as any).photo) {
+    const p = (uploadedMedia as any).photo
+    return new raw.types.InputPhoto(p.id, p.access_hash, p.file_reference)
+  }
+
+  return undefined
 }
 
 export async function sendPhoto(
@@ -42,6 +72,7 @@ export async function sendPhoto(
 ): Promise<Message> {
   const peer = await this.peerResolver.resolvePeer(chatId)
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
+  const ttlSeconds = options?.viewOnce ? (1 << 31) - 1 : options?.ttlSeconds
 
   let inputMedia: any
 
@@ -49,7 +80,7 @@ export async function sendPhoto(
     inputMedia = new raw.types.InputMediaPhotoExternal(
       photo,
       options?.hasSpoiler,
-      options?.ttlSeconds
+      ttlSeconds
     )
   } else {
     const uploadedFile = await saveFile.call(this, photo)
@@ -58,7 +89,7 @@ export async function sendPhoto(
       options?.hasSpoiler,
       undefined,
       undefined,
-      options?.ttlSeconds
+      ttlSeconds
     )
   }
 
@@ -94,19 +125,22 @@ export async function sendVideo(
 ): Promise<Message> {
   const peer = await this.peerResolver.resolvePeer(chatId)
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
+  const ttlSeconds = options?.viewOnce ? (1 << 31) - 1 : options?.ttlSeconds
 
+  const vcoverFile = await resolveVideoCover(this, peer, options?.videoCover)
   let inputMedia: any
 
   if (typeof video === 'string' && video.match(/^https?:\/\//)) {
     inputMedia = new raw.types.InputMediaDocumentExternal(
       video,
       options?.hasSpoiler,
-      options?.ttlSeconds
+      ttlSeconds,
+      vcoverFile,
+      options?.videoTimestamp
     )
   } else {
     const uploadedFile = await saveFile.call(this, video)
     const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
-    const videoCoverFile = options?.videoCover ? await saveFile.call(this, options.videoCover) : undefined
 
     const attributes: any[] = [
       new raw.types.DocumentAttributeVideo(
@@ -114,21 +148,28 @@ export async function sendVideo(
         options?.width ?? 0,
         options?.height ?? 0,
         false,
-        options?.supportsStreaming ?? false
+        options?.supportsStreaming ?? true,
+        options?.noSound ?? false,
+        undefined,
+        options?.videoTimestamp
       )
     ]
+    if (options?.fileName) {
+      attributes.push(new raw.types.DocumentAttributeFilename(options.fileName))
+    }
+
     inputMedia = new raw.types.InputMediaUploadedDocument(
       uploadedFile,
       'video/mp4',
       attributes,
-      undefined,
+      options?.noSound ?? undefined,
       undefined,
       options?.hasSpoiler,
       thumbFile,
       undefined,
-      videoCoverFile as any,
+      vcoverFile,
       options?.videoTimestamp,
-      options?.ttlSeconds
+      ttlSeconds
     )
   }
 
@@ -164,6 +205,7 @@ export async function sendDocument(
 ): Promise<Message> {
   const peer = await this.peerResolver.resolvePeer(chatId)
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
+  const ttlSeconds = options?.viewOnce ? (1 << 31) - 1 : options?.ttlSeconds
 
   let inputMedia: any
 
@@ -171,7 +213,7 @@ export async function sendDocument(
     inputMedia = new raw.types.InputMediaDocumentExternal(
       document,
       options?.hasSpoiler,
-      options?.ttlSeconds
+      ttlSeconds
     )
   } else {
     const uploadedFile = await saveFile.call(this, document)
@@ -191,7 +233,7 @@ export async function sendDocument(
       undefined,
       undefined,
       undefined,
-      options?.ttlSeconds
+      ttlSeconds
     )
   }
 
@@ -227,6 +269,7 @@ export async function sendAnimation(
 ): Promise<Message> {
   const peer = await this.peerResolver.resolvePeer(chatId)
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
+  const ttlSeconds = options?.viewOnce ? (1 << 31) - 1 : options?.ttlSeconds
 
   const uploadedFile = await saveFile.call(this, animation)
   const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
@@ -253,7 +296,7 @@ export async function sendAnimation(
     undefined,
     undefined,
     undefined,
-    options?.ttlSeconds
+    ttlSeconds
   )
 
   const { text, entities } = options?.caption ? parseText(options.caption) : { text: '', entities: [] }
