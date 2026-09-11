@@ -116,9 +116,17 @@ export function parseHTML(html: string): ParsedText {
       case 'pre':
         entities.push(new raw.types.MessageEntityPre(offset, length, span.param || ''))
         break
-      case 'text_url':
-        entities.push(new raw.types.MessageEntityTextUrl(offset, length, span.param || ''))
+      case 'text_url': {
+        const url = span.param || ''
+        const mentionMatch = url.match(/^(?:tg:\/\/user\?id=|mention:)(\d+)/i)
+        if (mentionMatch) {
+          const userId = BigInt(mentionMatch[1])
+          entities.push(new raw.types.InputMessageEntityMentionName(offset, length, new raw.types.InputUser(userId, 0n)))
+        } else {
+          entities.push(new raw.types.MessageEntityTextUrl(offset, length, url))
+        }
         break
+      }
       case 'spoiler':
         entities.push(new raw.types.MessageEntitySpoiler(offset, length))
         break

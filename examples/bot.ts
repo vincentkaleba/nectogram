@@ -16,7 +16,7 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-import { Client, User, Message, CallbackQuery, Filters, InlineKeyboardMarkup, InlineKeyboardButton } from '../src/index.js'
+import { Client, User, Message, CallbackQuery, Filters, InlineKeyboardMarkup, InlineKeyboardButton, RichMessage } from '../src/index.js'
 
 // Configure your Telegram API credentials
 const API_ID = Number(process.env.API_ID || 123456)
@@ -49,12 +49,37 @@ async function main() {
     ])
 
     const displayName = message.fromUser?.firstName ?? message.fromUser?.username ?? 'there'
-    await client.sendMessage(
-      message.chat.id,
-      `👋 Welcome **${displayName}**!\n\nI am powered by **Nectogram**, a high-performance Node.js MTProto client library!`,
-      { replyMarkup: keyboard }
-    )
-    console.log(`✅ Replied to /start from ${userName}`)
+    const userMention = message.fromUser
+      ? `[${message.fromUser.fullName ?? displayName}](tg://user?id=${message.fromUser.id})`
+      : displayName
+
+    try {
+      await client.sendMessage(
+        message.chat.id,
+        `👋 Welcome ${userMention}!\n\nI am powered by **Nectogram**, a high-performance Node.js MTProto client library!`,
+        { replyMarkup: keyboard }
+      )
+      console.log(`✅ Replied to /start from ${userName}`)
+    } catch (err: any) {
+      console.error(`❌ Failed to send /start message:`, err)
+    }
+  })
+
+  // Command: /rich (HTML Rich Message demo)
+  bot.onMessage(Filters.command('rich'), async (client: Client, message: Message) => {
+    console.log(`📩 Received /rich command from ${message.chat.id}`)
+    const htmlRichCard = new RichMessage({
+      html: '<h1>HTML Rich Card</h1><p>Contenu <b>enrichi</b> avec <tg-emoji emoji-id="5386626303259837583">👍</tg-emoji></p>',
+      noAutoLink: true,
+    })
+    try {
+      await client.sendMessage(message.chat.id, 'Voici un Rich Message au format HTML !', {
+        richMessage: htmlRichCard,
+      })
+      console.log(`✅ Replied to /rich`)
+    } catch (err: any) {
+      console.error(`❌ Failed to send /rich message:`, err)
+    }
   })
 
   // Command: /ping
