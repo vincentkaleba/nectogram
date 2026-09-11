@@ -17,7 +17,7 @@
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
 import * as raw from '../../../raw/index.js'
-import { Message, InlineKeyboardMarkup } from '../../../types/index.js'
+import { Message, InlineKeyboardMarkup, RichMessage } from '../../../types/index.js'
 import { parseText, ParseMode } from '../../../parser/index.js'
 import type { Client } from '../../Client.js'
 import type { PeerLike } from '../../PeerResolver.js'
@@ -27,7 +27,7 @@ export interface SendMessageOptions {
   replyMarkup?: InlineKeyboardMarkup
   parseMode?: ParseMode
   entities?: raw.base.MessageEntity[]
-  richMessage?: raw.base.InputRichMessage
+  richMessage?: RichMessage | raw.base.InputRichMessage
 }
 
 export async function sendMessage(
@@ -59,6 +59,11 @@ export async function sendMessage(
     replyMarkup = options.replyMarkup.writeTL()
   }
 
+  let rawRichMessage: raw.base.InputRichMessage | undefined
+  if (options?.richMessage) {
+    rawRichMessage = options.richMessage instanceof RichMessage ? options.richMessage.writeTL() : options.richMessage
+  }
+
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
 
   const res = await this.invoke(
@@ -71,7 +76,7 @@ export async function sendMessage(
       replyMarkup,
       entities,
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
-      options?.richMessage
+      rawRichMessage
     )
   )
 

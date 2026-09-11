@@ -40,8 +40,11 @@ async function main() {
 
     const keyboard = new InlineKeyboardMarkup([
       [
-        new InlineKeyboardButton({ text: '⭐ GitHub Repo', url: 'https://github.com/nectogram/nectogram' }),
-        new InlineKeyboardButton({ text: '🔘 Click Me', callbackData: 'click_demo_button' }),
+        new InlineKeyboardButton({ text: '⭐ GitHub Repo', url: 'https://github.com/nectogram/nectogram', style: 'primary' }),
+        new InlineKeyboardButton({ text: '🔘 Click Me', callbackData: 'click_demo_button', style: 'success' }),
+      ],
+      [
+        new InlineKeyboardButton({ text: '🔴 Action Dangereuse', callbackData: 'danger_action', style: 'danger' }),
       ],
     ])
 

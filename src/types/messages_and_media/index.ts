@@ -17,3 +17,4 @@
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
 export { Message, type MessageOptions } from './Message.js'
+export { RichMessage, type RichMessageOptions } from './RichMessage.js'

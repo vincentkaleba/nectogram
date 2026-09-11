@@ -5,6 +5,7 @@ import {
   MessageEntityType,
   ButtonStyle,
   InlineKeyboardButton,
+  RichMessage,
   parseMarkdown,
   parseHTML,
   raw,
@@ -66,5 +67,13 @@ describe('Enums, Custom Emojis & Colored Buttons', () => {
     const tlWebApp = webAppBtn.writeTL()
     expect(tlWebApp.type_).toBeInstanceOf(raw.types.InlineButtonTypeWebView)
     expect((tlWebApp.type_ as any).url).toBe('https://app.example.com')
+  })
+
+  it('should build RichMessage objects', () => {
+    const rich = new RichMessage({ markdown: '# Title\n**Rich content**', noAutoLink: true })
+    const tlRich = rich.writeTL()
+    expect(tlRich).toBeInstanceOf(raw.types.InputRichMessageMarkdown)
+    expect((tlRich as any).markdown).toBe('# Title\n**Rich content**')
+    expect((tlRich as any).noautolink).toBe(true)
   })
 })
