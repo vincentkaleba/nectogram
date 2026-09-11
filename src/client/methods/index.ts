@@ -4,6 +4,13 @@
 
 export * from './auth/getMe.js'
 export * from './auth/signInBot.js'
+export * from './auth/authMethods.js'
+
+export * from './account/accountMethods.js'
+
+export * from './invite_links/inviteLinkMethods.js'
+
+export * from './contacts/contactMethods.js'
 
 export * from './messages/sendMessage.js'
 export * from './messages/editMessageText.js'

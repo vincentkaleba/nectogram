@@ -96,6 +96,28 @@ import {
   getCommonChats,
   getChatPhotos,
   saveFile,
+  sendCode,
+  resendCode,
+  signIn,
+  signUp,
+  logOut,
+  acceptTermsOfService,
+  updateProfile,
+  setUsername,
+  getAccountTtl,
+  setAccountTtl,
+  getPrivacy,
+  setPrivacy,
+  createChatInviteLink,
+  editChatInviteLink,
+  revokeChatInviteLink,
+  deleteChatInviteLink,
+  approveChatJoinRequest,
+  declineChatJoinRequest,
+  addContact,
+  deleteContacts,
+  getContacts,
+  searchContacts,
 } from './methods/index.js'
 
 import { parseText, ParseMode } from '../parser/index.js'
@@ -566,4 +588,26 @@ export class Client {
   public getCommonChats = getCommonChats.bind(this)
   public getChatPhotos = getChatPhotos.bind(this)
   public saveFile = saveFile.bind(this)
+  public sendCode = sendCode.bind(this)
+  public resendCode = resendCode.bind(this)
+  public signIn = signIn.bind(this)
+  public signUp = signUp.bind(this)
+  public logOut = logOut.bind(this)
+  public acceptTermsOfService = acceptTermsOfService.bind(this)
+  public updateProfile = updateProfile.bind(this)
+  public setUsername = setUsername.bind(this)
+  public getAccountTtl = getAccountTtl.bind(this)
+  public setAccountTtl = setAccountTtl.bind(this)
+  public getPrivacy = getPrivacy.bind(this)
+  public setPrivacy = setPrivacy.bind(this)
+  public createChatInviteLink = createChatInviteLink.bind(this)
+  public editChatInviteLink = editChatInviteLink.bind(this)
+  public revokeChatInviteLink = revokeChatInviteLink.bind(this)
+  public deleteChatInviteLink = deleteChatInviteLink.bind(this)
+  public approveChatJoinRequest = approveChatJoinRequest.bind(this)
+  public declineChatJoinRequest = declineChatJoinRequest.bind(this)
+  public addContact = addContact.bind(this)
+  public deleteContacts = deleteContacts.bind(this)
+  public getContacts = getContacts.bind(this)
+  public searchContacts = searchContacts.bind(this)
 }
