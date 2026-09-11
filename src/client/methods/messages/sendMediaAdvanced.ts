@@ -19,6 +19,8 @@ export interface BaseMediaOptions {
   replyToMessageId?: number
   showCaptionAboveMedia?: boolean
   thumb?: string | Buffer
+  progress?: (current: number, total: number, ...args: any[]) => void | Promise<void>
+  progressArgs?: any[]
 }
 
 export interface VideoMediaOptions extends BaseMediaOptions {
@@ -35,12 +37,15 @@ export interface VideoMediaOptions extends BaseMediaOptions {
 export interface DocumentMediaOptions extends BaseMediaOptions {
   mimeType?: string
   fileName?: string
+  forceDocument?: boolean
 }
 
 async function resolveVideoCover(
   client: Client,
   peer: raw.base.InputPeer,
-  videoCover?: string | Buffer
+  videoCover?: string | Buffer,
+  progress?: (current: number, total: number, ...args: any[]) => void | Promise<void>,
+  progressArgs?: any[]
 ): Promise<raw.types.InputPhoto | undefined> {
   if (!videoCover) return undefined
 
@@ -48,7 +53,7 @@ async function resolveVideoCover(
   if (typeof videoCover === 'string' && videoCover.match(/^https?:\/\//)) {
     media = new raw.types.InputMediaPhotoExternal(videoCover)
   } else {
-    const uploadedFile = await saveFile.call(client, videoCover)
+    const uploadedFile = await saveFile.call(client, videoCover, { progress, progressArgs })
     media = new raw.types.InputMediaUploadedPhoto(uploadedFile)
   }
 
@@ -83,7 +88,10 @@ export async function sendPhoto(
       ttlSeconds
     )
   } else {
-    const uploadedFile = await saveFile.call(this, photo)
+    const uploadedFile = await saveFile.call(this, photo, {
+      progress: options?.progress,
+      progressArgs: options?.progressArgs
+    })
     inputMedia = new raw.types.InputMediaUploadedPhoto(
       uploadedFile,
       options?.hasSpoiler,
@@ -127,7 +135,7 @@ export async function sendVideo(
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
   const ttlSeconds = options?.viewOnce ? (1 << 31) - 1 : options?.ttlSeconds
 
-  const vcoverFile = await resolveVideoCover(this, peer, options?.videoCover)
+  const vcoverFile = await resolveVideoCover(this, peer, options?.videoCover, options?.progress, options?.progressArgs)
   let inputMedia: any
 
   if (typeof video === 'string' && video.match(/^https?:\/\//)) {
@@ -139,7 +147,10 @@ export async function sendVideo(
       options?.videoTimestamp
     )
   } else {
-    const uploadedFile = await saveFile.call(this, video)
+    const uploadedFile = await saveFile.call(this, video, {
+      progress: options?.progress,
+      progressArgs: options?.progressArgs
+    })
     const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
 
     const attributes: any[] = [
@@ -216,7 +227,10 @@ export async function sendDocument(
       ttlSeconds
     )
   } else {
-    const uploadedFile = await saveFile.call(this, document)
+    const uploadedFile = await saveFile.call(this, document, {
+      progress: options?.progress,
+      progressArgs: options?.progressArgs
+    })
     const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
 
     const attributes: any[] = [
@@ -227,7 +241,7 @@ export async function sendDocument(
       options?.mimeType ?? 'application/octet-stream',
       attributes,
       undefined,
-      undefined,
+      options?.forceDocument ? true : undefined,
       options?.hasSpoiler,
       thumbFile,
       undefined,
@@ -271,7 +285,10 @@ export async function sendAnimation(
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
   const ttlSeconds = options?.viewOnce ? (1 << 31) - 1 : options?.ttlSeconds
 
-  const uploadedFile = await saveFile.call(this, animation)
+  const uploadedFile = await saveFile.call(this, animation, {
+    progress: options?.progress,
+    progressArgs: options?.progressArgs
+  })
   const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
 
   const attributes: any[] = [
@@ -332,7 +349,10 @@ export async function sendAudio(
   const peer = await this.peerResolver.resolvePeer(chatId)
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
 
-  const uploadedFile = await saveFile.call(this, audio)
+  const uploadedFile = await saveFile.call(this, audio, {
+    progress: options?.progress,
+    progressArgs: options?.progressArgs
+  })
   const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
 
   const attributes: any[] = [
@@ -386,7 +406,10 @@ export async function sendVoice(
   const peer = await this.peerResolver.resolvePeer(chatId)
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
 
-  const uploadedFile = await saveFile.call(this, voice)
+  const uploadedFile = await saveFile.call(this, voice, {
+    progress: options?.progress,
+    progressArgs: options?.progressArgs
+  })
   const attributes: any[] = [
     new raw.types.DocumentAttributeAudio(
       options?.duration ?? 0,

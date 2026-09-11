@@ -11,7 +11,8 @@ import type { Client } from '../../Client.js'
 export interface SaveFileOptions {
   fileId?: bigint
   filePart?: number
-  progress?: (current: number, total: number) => void | Promise<void>
+  progress?: (current: number, total: number, ...args: any[]) => void | Promise<void>
+  progressArgs?: any[]
 }
 
 export async function saveFile(
@@ -72,7 +73,7 @@ export async function saveFile(
     }
 
     if (options?.progress) {
-      await options.progress(end, fileSize)
+      await options.progress(end, fileSize, ...(options.progressArgs ?? []))
     }
   }
 
