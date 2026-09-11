@@ -18,7 +18,7 @@
 
 import * as raw from '../raw/index.js'
 import { Message, CallbackQuery, User } from '../types/index.js'
-import { Handler, MessageHandler, CallbackQueryHandler, RawUpdateHandler, ErrorHandler } from './handlers/index.js'
+import { Handler, MessageHandler, CallbackQueryHandler, EditedMessageHandler, RawUpdateHandler, ErrorHandler } from './handlers/index.js'
 import { StopPropagation, ContinuePropagation } from './errors.js'
 
 export type UpdatePacket = [rawUpdate: any, users: Map<bigint, any>, chats: Map<bigint, any>]
@@ -274,11 +274,17 @@ export class Dispatcher {
     if (!update) return { parsedUpdate: null }
 
     if (
-      update instanceof raw.types.UpdateNewMessage ||
-      update instanceof raw.types.UpdateNewChannelMessage ||
-      update instanceof raw.types.UpdateNewScheduledMessage ||
       update instanceof raw.types.UpdateEditMessage ||
       update instanceof raw.types.UpdateEditChannelMessage
+    ) {
+      if (update.message && update.message instanceof raw.types.Message) {
+        const parsed = Message._parse(update.message, users, chats)
+        return { parsedUpdate: parsed, handlerClass: EditedMessageHandler }
+      }
+    } else if (
+      update instanceof raw.types.UpdateNewMessage ||
+      update instanceof raw.types.UpdateNewChannelMessage ||
+      update instanceof raw.types.UpdateNewScheduledMessage
     ) {
       if (update.message && update.message instanceof raw.types.Message) {
         const parsed = Message._parse(update.message, users, chats)

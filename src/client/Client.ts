@@ -31,7 +31,11 @@ import {
   sendMessage,
   editMessageText,
   deleteMessages,
+  forwardMessages,
+  sendChatAction,
   getChat,
+  getChatMembers,
+  answerCallbackQuery,
 } from './methods/index.js'
 
 import { parseText, ParseMode } from '../parser/index.js'
@@ -328,5 +332,9 @@ export class Client {
   public sendMessage = sendMessage.bind(this)
   public editMessageText = editMessageText.bind(this)
   public deleteMessages = deleteMessages.bind(this)
+  public forwardMessages = forwardMessages.bind(this)
+  public sendChatAction = sendChatAction.bind(this)
   public getChat = getChat.bind(this)
+  public getChatMembers = getChatMembers.bind(this)
+  public answerCallbackQuery = answerCallbackQuery.bind(this)
 }
