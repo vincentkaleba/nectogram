@@ -53,15 +53,27 @@ async function main() {
       ? `[${message.fromUser.fullName ?? displayName}](tg://user?id=${message.fromUser.id})`
       : displayName
 
+    // 1. Send Rich Card preview
+    const richCard = new RichMessage({
+      markdown: `# 🚀 Nectogram Demo Bot\n\nWelcome ${userMention}! This is a **Rich Message** card with **MTProto TG-13** formatting!`,
+      noAutoLink: true,
+    })
+
     try {
+      // Message 1: Rich Card
+      await client.sendMessage(message.chat.id, '🚀 Rich Card Preview', {
+        richMessage: richCard,
+      })
+
+      // Message 2: Interactive message with mention & colored buttons
       await client.sendMessage(
         message.chat.id,
         `👋 Welcome ${userMention}!\n\nI am powered by **Nectogram**, a high-performance Node.js MTProto client library!`,
         { replyMarkup: keyboard }
       )
-      console.log(`✅ Replied to /start from ${userName}`)
+      console.log(`✅ Sent both Rich Card & Interactive Message to ${userName}`)
     } catch (err: any) {
-      console.error(`❌ Failed to send /start message:`, err)
+      console.error(`❌ Failed to send /start messages:`, err)
     }
   })
 
