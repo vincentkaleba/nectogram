@@ -58,50 +58,62 @@ export class Message {
    * Parse a raw TL Message object into a high-level Message instance.
    */
   public static _parse(
-    rawMsg: raw.types.Message,
+    rawMsg: raw.types.Message | any,
     usersMap?: Map<bigint, User>,
     chatsMap?: Map<bigint, Chat>
   ): Message {
+    let fromUserId: bigint | undefined
+    const fromId = rawMsg.from_id || rawMsg.fromId
+    const fromIdQual = fromId?.QUALNAME || fromId?.constructor?.name
+    if (fromId && (fromId instanceof raw.types.PeerUser || fromIdQual === 'types.PeerUser')) {
+      fromUserId = BigInt(fromId.user_id ?? fromId.userId)
+    }
+
     let fromUser: User | undefined
-    if (rawMsg.from_id && rawMsg.from_id instanceof raw.types.PeerUser) {
-      const u = usersMap?.get(rawMsg.from_id.user_id)
-      if (u) {
-        fromUser = u instanceof User ? u : User._parse(u as any)
-      } else {
-        fromUser = new User({ id: rawMsg.from_id.user_id, isBot: false })
-      }
+    if (fromUserId) {
+      const u = usersMap?.get(fromUserId)
+      fromUser = u ? (u instanceof User ? u : User._parse(u as any)) : new User({ id: fromUserId, isBot: false })
     }
 
     let chat: Chat
-    if (rawMsg.peer_id instanceof raw.types.PeerUser) {
-      const u = usersMap?.get(rawMsg.peer_id.user_id)
+    const peerId = rawMsg.peer_id || rawMsg.peerId
+    const peerQual = peerId?.QUALNAME || peerId?.constructor?.name
+    if (peerId && (peerId instanceof raw.types.PeerUser || peerQual === 'types.PeerUser')) {
+      const peerUserId = BigInt(peerId.user_id ?? peerId.userId)
+      const chatId = (!rawMsg.out && fromUserId) ? fromUserId : peerUserId
+      const u = usersMap?.get(chatId)
       const parsedUser = u ? (u instanceof User ? u : User._parse(u as any)) : undefined
       chat = new Chat({
-        id: rawMsg.peer_id.user_id,
+        id: chatId,
         type: 'private',
         title: parsedUser?.fullName ?? parsedUser?.username,
         username: parsedUser?.username,
       })
-    } else if (rawMsg.peer_id instanceof raw.types.PeerChannel) {
-      const c = chatsMap?.get(rawMsg.peer_id.channel_id)
-      chat = c ? (c instanceof Chat ? c : Chat._parse(c as any)) : new Chat({ id: rawMsg.peer_id.channel_id, type: 'channel' })
-    } else if (rawMsg.peer_id instanceof raw.types.PeerChat) {
-      const c = chatsMap?.get(rawMsg.peer_id.chat_id)
-      chat = c ? (c instanceof Chat ? c : Chat._parse(c as any)) : new Chat({ id: rawMsg.peer_id.chat_id, type: 'group' })
+    } else if (peerId && (peerId instanceof raw.types.PeerChannel || peerQual === 'types.PeerChannel')) {
+      const channelId = BigInt(peerId.channel_id ?? peerId.channelId)
+      const c = chatsMap?.get(channelId)
+      chat = c ? (c instanceof Chat ? c : Chat._parse(c as any)) : new Chat({ id: channelId, type: 'channel' })
+    } else if (peerId && (peerId instanceof raw.types.PeerChat || peerQual === 'types.PeerChat')) {
+      const chatIdVal = BigInt(peerId.chat_id ?? peerId.chatId)
+      const c = chatsMap?.get(chatIdVal)
+      chat = c ? (c instanceof Chat ? c : Chat._parse(c as any)) : new Chat({ id: chatIdVal, type: 'group' })
     } else {
-      chat = new Chat({ id: 0n, type: 'private' })
+      const chatId = fromUserId ?? 0n
+      chat = new Chat({ id: chatId, type: 'private' })
     }
 
     let replyToMessageId: number | undefined
-    if (rawMsg.reply_to && rawMsg.reply_to instanceof raw.types.MessageReplyHeader) {
-      replyToMessageId = rawMsg.reply_to.reply_to_msg_id
+    const replyToHeader = rawMsg.reply_to || rawMsg.replyTo
+    const replyToQual = replyToHeader?.QUALNAME || replyToHeader?.constructor?.name
+    if (replyToHeader && (replyToHeader instanceof raw.types.MessageReplyHeader || replyToQual === 'types.MessageReplyHeader')) {
+      replyToMessageId = replyToHeader.reply_to_msg_id ?? replyToHeader.replyToMsgId
     }
 
     return new Message({
       id: rawMsg.id,
       fromUser,
       chat,
-      date: new Date(rawMsg.date * 1000),
+      date: new Date((rawMsg.date ?? 0) * 1000),
       text: rawMsg.message,
       replyToMessageId,
       raw: rawMsg,

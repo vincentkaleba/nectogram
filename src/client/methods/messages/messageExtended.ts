@@ -513,3 +513,59 @@ export async function stopPoll(
   )
   return res
 }
+
+/**
+ * Get count of discussion replies.
+ */
+export async function getDiscussionRepliesCount(
+  this: Client,
+  chatId: PeerLike,
+  messageId: number
+): Promise<number> {
+  const replies = await getDiscussionReplies.call(this, chatId, messageId, { limit: 1 })
+  return replies.length
+}
+
+/**
+ * Search global messages count.
+ */
+export async function searchGlobalCount(
+  this: Client,
+  query: string
+): Promise<number> {
+  const msgs = await searchGlobal.call(this, query, { limit: 1 })
+  return msgs.length
+}
+
+/**
+ * Save a GIF document to saved GIFs.
+ */
+export async function addToGifs(
+  this: Client,
+  document: raw.base.InputDocument
+): Promise<boolean> {
+  const res = await this.invoke(
+    new raw.functions.messages.SaveGif(document, false)
+  )
+  return Boolean(res)
+}
+
+/**
+ * Translate text to target language.
+ */
+export async function translateText(
+  this: Client,
+  text: string,
+  toLanguage: string
+): Promise<string> {
+  const res = (await this.invoke(
+    new raw.functions.messages.TranslateText(
+      toLanguage,
+      undefined,
+      undefined,
+      [new raw.types.TextWithEntities(text, [])]
+    )
+  )) as any
+  return res?.result?.[0]?.text ?? text
+}
+

@@ -37,3 +37,13 @@ export async function getBoostsStatus(
 
   return res
 }
+
+export async function getBoosts(
+  this: Client
+): Promise<any> {
+  const res = await this.invoke(
+    new raw.functions.premium.GetMyBoosts()
+  )
+
+  return res
+}

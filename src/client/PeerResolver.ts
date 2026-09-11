@@ -35,17 +35,16 @@ export class PeerResolver {
    */
   public async resolvePeer(peer: PeerLike): Promise<raw.base.InputPeer> {
     if (typeof peer === 'object' && peer !== null) {
-      if ('QUALNAME' in peer) {
-        if (peer instanceof raw.types.InputPeerSelf) return peer
-        if (peer instanceof raw.types.InputPeerUser) return peer
-        if (peer instanceof raw.types.InputPeerChannel) return peer
-        if (peer instanceof raw.types.InputPeerChat) return peer
-        if (peer instanceof raw.types.InputUser) {
-          return new raw.types.InputPeerUser(peer.user_id, peer.access_hash)
-        }
-        if (peer instanceof raw.types.InputChannel) {
-          return new raw.types.InputPeerChannel(peer.channel_id, peer.access_hash)
-        }
+      const qual = (peer as any).QUALNAME || peer.constructor?.name
+      if (qual === 'types.InputPeerSelf' || peer instanceof raw.types.InputPeerSelf) return peer as any
+      if (qual === 'types.InputPeerUser' || peer instanceof raw.types.InputPeerUser) return peer as any
+      if (qual === 'types.InputPeerChannel' || peer instanceof raw.types.InputPeerChannel) return peer as any
+      if (qual === 'types.InputPeerChat' || peer instanceof raw.types.InputPeerChat) return peer as any
+      if (qual === 'types.InputUser' || peer instanceof raw.types.InputUser) {
+        return new raw.types.InputPeerUser((peer as any).user_id, (peer as any).access_hash)
+      }
+      if (qual === 'types.InputChannel' || peer instanceof raw.types.InputChannel) {
+        return new raw.types.InputPeerChannel((peer as any).channel_id, (peer as any).access_hash)
       }
       return peer as raw.base.InputPeer
     }
@@ -77,7 +76,8 @@ export class PeerResolver {
           const res = await this._invokeFn(new raw.functions.contacts.ResolveUsername(clean))
           if (res && res.users && res.users.length > 0) {
             const u = res.users[0]
-            if (u instanceof raw.types.User) {
+            const uQual = u?.QUALNAME || u?.constructor?.name
+            if (uQual === 'types.User' || u instanceof raw.types.User) {
               const peerInfo: PeerInfo = {
                 id: u.id,
                 accessHash: u.access_hash ?? 0n,
@@ -90,7 +90,8 @@ export class PeerResolver {
             }
           } else if (res && res.chats && res.chats.length > 0) {
             const c = res.chats[0]
-            if (c instanceof raw.types.Channel) {
+            const cQual = c?.QUALNAME || c?.constructor?.name
+            if (cQual === 'types.Channel' || c instanceof raw.types.Channel) {
               const peerInfo: PeerInfo = {
                 id: c.id,
                 accessHash: c.access_hash ?? 0n,

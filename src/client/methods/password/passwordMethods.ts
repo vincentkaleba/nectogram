@@ -8,22 +8,22 @@ import type { Client } from '../../Client.js'
 export async function enableCloudPassword(
   this: Client,
   password: string,
-  hint: string = ''
+  hint: string = '',
+  email?: string
 ): Promise<boolean> {
-  const pwdState = await this.invoke(new raw.functions.account.GetPassword())
-  const algo = pwdState.current_algo
-
-  if (!algo) {
-    throw new Error('enableCloudPassword: Current password algorithm not returned by server')
+  const pwdState = (await this.invoke(new raw.functions.account.GetPassword())) as any
+  if (pwdState.has_password) {
+    throw new Error('There is already a cloud password enabled')
   }
 
   await this.invoke(
     new raw.functions.account.UpdatePasswordSettings(
       new raw.types.InputCheckPasswordEmpty(),
       new raw.types.account.PasswordInputSettings(
-        algo as any,
+        pwdState.new_algo ?? new raw.types.PasswordKdfAlgoUnknown(),
         Buffer.from([]),
-        hint
+        hint,
+        email
       )
     )
   )
@@ -35,17 +35,20 @@ export async function changeCloudPassword(
   this: Client,
   currentPassword: string,
   newPassword: string,
-  hint: string = ''
+  newHint: string = ''
 ): Promise<boolean> {
-  const pwdState = await this.invoke(new raw.functions.account.GetPassword())
+  const pwdState = (await this.invoke(new raw.functions.account.GetPassword())) as any
+  if (!pwdState.has_password) {
+    throw new Error('There is no cloud password to change')
+  }
 
   await this.invoke(
     new raw.functions.account.UpdatePasswordSettings(
       new raw.types.InputCheckPasswordEmpty(),
       new raw.types.account.PasswordInputSettings(
-        pwdState.current_algo as any,
+        pwdState.new_algo ?? new raw.types.PasswordKdfAlgoUnknown(),
         Buffer.from([]),
-        hint
+        newHint
       )
     )
   )
@@ -55,14 +58,19 @@ export async function changeCloudPassword(
 
 export async function removeCloudPassword(
   this: Client,
-  currentPassword: string
+  password: string
 ): Promise<boolean> {
+  const pwdState = (await this.invoke(new raw.functions.account.GetPassword())) as any
+  if (!pwdState.has_password) {
+    throw new Error('There is no cloud password to remove')
+  }
+
   await this.invoke(
     new raw.functions.account.UpdatePasswordSettings(
       new raw.types.InputCheckPasswordEmpty(),
       new raw.types.account.PasswordInputSettings(
-        undefined,
-        undefined,
+        new raw.types.PasswordKdfAlgoUnknown(),
+        Buffer.from([]),
         ''
       )
     )
@@ -70,3 +78,4 @@ export async function removeCloudPassword(
 
   return true
 }
+

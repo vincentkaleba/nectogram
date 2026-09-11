@@ -155,3 +155,18 @@ export async function resetSessions(
 
 export const sendPhoneNumberCode = sendCode
 export const resendPhoneNumberCode = resendCode
+
+export async function exportLoginToken(
+  this: Client,
+  exceptIds?: bigint[]
+): Promise<any> {
+  const res = await this.invoke(
+    new raw.functions.auth.ExportLoginToken(
+      this.apiId,
+      this.apiHash,
+      exceptIds ?? []
+    )
+  )
+  return res
+}
+

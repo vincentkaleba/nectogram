@@ -16,7 +16,7 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
-import { Client, User, Message, CallbackQuery, Filters, InlineKeyboardMarkup, InlineKeyboardButton, RichMessage } from '../src/index.js'
+import { Client, User, Message, CallbackQuery, Filters, InlineKeyboardMarkup, InlineKeyboardButton, RichMessage, ButtonStyle } from '../src/index.js'
 
 // Configure your Telegram API credentials
 const API_ID = Number(process.env.API_ID || 123456)
@@ -40,37 +40,25 @@ async function main() {
 
     const keyboard = new InlineKeyboardMarkup([
       [
-        new InlineKeyboardButton({ text: '⭐ GitHub Repo', url: 'https://github.com/nectogram/nectogram', style: 'primary' }),
-        new InlineKeyboardButton({ text: '🔘 Click Me', callbackData: 'click_demo_button', style: 'success' }),
+        new InlineKeyboardButton({ text: '⭐ GitHub Repo', url: 'https://github.com/nectogram/nectogram', style: ButtonStyle.PRIMARY }),
+        new InlineKeyboardButton({ text: '🔘 Click Me', callbackData: 'click_demo_button', style: ButtonStyle.SUCCESS }),
       ],
       [
-        new InlineKeyboardButton({ text: '🔴 Action Dangereuse', callbackData: 'danger_action', style: 'danger' }),
+        new InlineKeyboardButton({ text: '🔴 Action Dangereuse', callbackData: 'danger_action', style: ButtonStyle.DANGER }),
       ],
     ])
 
     const userMention = message.fromUser?.mention ?? 'User'
 
-    // 1. Send Rich Card preview
-    const richCard = new RichMessage({
-      markdown: `# 🚀 Nectogram Demo Bot\n\nWelcome ${userMention}! This is a **Rich Message** card with **MTProto TG-13** formatting!`,
-      noAutoLink: true,
-    })
-
     try {
-      // Message 1: Rich Card
-      await client.sendMessage(message.chat.id, '🚀 Rich Card Preview', {
-        richMessage: richCard,
-      })
-
-      // Message 2: Interactive message with mention & colored buttons
       await client.sendMessage(
         message.chat.id,
-        `👋 Welcome ${userMention}!\n\nI am powered by **Nectogram**, a high-performance Node.js MTProto client library!`,
+        `🚀 **Welcome ${userMention}!**\n\nI am powered by **Nectogram**, a high-performance Node.js MTProto Telegram client library!`,
         { replyMarkup: keyboard }
       )
-      console.log(`✅ Sent both Rich Card & Interactive Message to ${userName}`)
+      console.log(`✅ Sent /start response to ${userName}`)
     } catch (err: any) {
-      console.error(`❌ Failed to send /start messages:`, err)
+      console.error(`❌ Failed to send /start message:`, err)
     }
   })
 
@@ -78,7 +66,7 @@ async function main() {
   bot.onMessage(Filters.command('rich'), async (client: Client, message: Message) => {
     console.log(`📩 Received /rich command from ${message.chat.id}`)
     const htmlRichCard = new RichMessage({
-      html: '<h1>HTML Rich Card</h1><p>Contenu <b>enrichi</b> avec <tg-emoji emoji-id="5386626303259837583">👍</tg-emoji></p>',
+      html: '<h1>HTML Rich Card</h1><p>Contenu <b>enrichi</b> avec <tg-emoji emoji-id="5978545998736134283">👑</tg-emoji><tg-emoji emoji-id="6026240790219460632">🦦</tg-emoji><tg-emoji emoji-id="5899883552450809632">🔒</tg-emoji><tg-emoji emoji-id="5899952671359504050">💜</tg-emoji><tg-emoji emoji-id="5899859522108789256">🩵</tg-emoji><tg-emoji emoji-id="5899824114398401049">🅰</tg-emoji><tg-emoji emoji-id="5899838712992240333">🔐</tg-emoji><tg-emoji emoji-id="5899848299359244592">🅰</tg-emoji><tg-emoji emoji-id="6026095130698584657">👆</tg-emoji><tg-emoji emoji-id="6026310858315927807">📶</tg-emoji><tg-emoji emoji-id="6026164816542961349">🛜</tg-emoji><tg-emoji emoji-id="6024048153580277867">🔄</tg-emoji><tg-emoji emoji-id="6024100028195279285">⬜️</tg-emoji><tg-emoji emoji-id="6023902876311490783">🍏</tg-emoji><tg-emoji emoji-id="5899731270090363274">👨‍🚀</tg-emoji><tg-emoji emoji-id="5902266357356957306">👽</tg-emoji><tg-emoji emoji-id="5899963696540553269">🪐</tg-emoji><tg-emoji emoji-id="5900276580613099895">🪐</tg-emoji><tg-emoji emoji-id="5901987429295854086">💫</tg-emoji><tg-emoji emoji-id="5899976529902833919">♾</tg-emoji><tg-emoji emoji-id="5900235542200586578">👁</tg-emoji><tg-emoji emoji-id="5902204801885671680">🐱</tg-emoji><tg-emoji emoji-id="5900093954308705855">0⃣</tg-emoji><tg-emoji emoji-id="5899760673436471128">1⃣</tg-emoji><tg-emoji emoji-id="5900246704820588032">2⃣</tg-emoji><tg-emoji emoji-id="5899833069405212539">3⃣</tg-emoji><tg-emoji emoji-id="5902058515299569197">4⃣</tg-emoji><tg-emoji emoji-id="5902262135404105258">5⃣</tg-emoji><tg-emoji emoji-id="5899898778109875302">6⃣</tg-emoji><tg-emoji emoji-id="5899814639700545792">7⃣</tg-emoji><tg-emoji emoji-id="5899920321665831080">8⃣</tg-emoji><tg-emoji emoji-id="5899966475384393828">9⃣</tg-emoji><tg-emoji emoji-id="5900223078205493062">☘</tg-emoji><tg-emoji emoji-id="5902444903442420242">⚜</tg-emoji><tg-emoji emoji-id="5900190475108749323">☘</tg-emoji><tg-emoji emoji-id="5897862946431701391">✔️</tg-emoji><tg-emoji emoji-id="5902053593267049016">✅</tg-emoji><tg-emoji emoji-id="5902420349114388325">✔️</tg-emoji><tg-emoji emoji-id="5899945812296731931">✅</tg-emoji><tg-emoji emoji-id="5900186420659622041">✅</tg-emoji><tg-emoji emoji-id="5900159478329773802">⭐️</tg-emoji><tg-emoji emoji-id="5899735084021322380">✈️</tg-emoji></p>',
       noAutoLink: true,
     })
     try {
@@ -110,11 +98,33 @@ async function main() {
     console.log(`✅ Replied to hello message`)
   })
 
+  // Fallback handler: responds to ANY message that didn't match previous filters
+  bot.onMessage(async (client: Client, message: Message) => {
+    console.log(`📩 Received fallback message "${message.text}" from chat ${message.chat.id}`)
+    try {
+      await client.sendMessage(message.chat.id, `🤖 Nectogram Bot received your message: **"${message.text ?? ''}"**\n\nTry commands: /start, /ping, /rich!`)
+      console.log(`✅ Sent fallback response to chat ${message.chat.id}`)
+    } catch (err: any) {
+      console.error(`❌ Failed to send fallback response:`, err)
+    }
+  })
+
   // Callback Query Handler (Inline Button Clicks)
   bot.onCallbackQuery(Filters.regex(/click_demo_button/), async (client: Client, query: CallbackQuery) => {
-    console.log(`🔘 Inline button clicked by user ${query.fromUser.id}`)
-    if (query.matches) {
-      console.log('Regex match:', query.matches[0])
+    try {
+      console.log(`🔘 Inline button clicked by user ${query.fromUser.id} (Data: ${query.data})`)
+      await client.answerCallbackQuery(query.id, { text: '🎉 Button clicked successfully!', showAlert: true })
+    } catch (err: any) {
+      console.error(`❌ Error handling click_demo_button:`, err)
+    }
+  })
+
+  bot.onCallbackQuery(Filters.regex(/danger_action/), async (client: Client, query: CallbackQuery) => {
+    try {
+      console.log(`🔴 Danger action clicked by user ${query.fromUser.id}`)
+      await client.answerCallbackQuery(query.id, { text: '⚠️ Danger action triggered!', showAlert: true })
+    } catch (err: any) {
+      console.error(`❌ Error handling danger_action:`, err)
     }
   })
 

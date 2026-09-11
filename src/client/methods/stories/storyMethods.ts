@@ -53,19 +53,269 @@ export async function getStories(
   return res
 }
 
-export async function deleteStories(
+export async function canPostStories(
+  this: Client,
+  chatId: PeerLike
+): Promise<number> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const res = await this.invoke(
+    new raw.functions.stories.CanSendStory(peer)
+  )
+  return res.count_remains ?? 0
+}
+
+export async function editStoryCaption(
   this: Client,
   chatId: PeerLike,
-  storyIds: number[]
-): Promise<boolean> {
+  storyId: number,
+  caption: string
+): Promise<any> {
   const peer = await this.peerResolver.resolvePeer(chatId)
-
-  await this.invoke(
-    new raw.functions.stories.DeleteStories(
+  const res = await this.invoke(
+    new raw.functions.stories.EditStory(
       peer,
-      storyIds
+      storyId,
+      undefined,
+      undefined,
+      caption
     )
   )
-
-  return true
+  return res
 }
+
+export async function editStoryMedia(
+  this: Client,
+  chatId: PeerLike,
+  storyId: number,
+  media: string | Buffer
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const uploadedFile = await saveFile.call(this, media)
+  const inputMedia = new raw.types.InputMediaUploadedPhoto(uploadedFile)
+
+  const res = await this.invoke(
+    new raw.functions.stories.EditStory(
+      peer,
+      storyId,
+      inputMedia
+    )
+  )
+  return res
+}
+
+export async function editStoryPrivacy(
+  this: Client,
+  chatId: PeerLike,
+  storyId: number,
+  privacy: any[]
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const res = await this.invoke(
+    new raw.functions.stories.EditStory(
+      peer,
+      storyId,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      privacy
+    )
+  )
+  return res
+}
+
+export async function enableStealthMode(
+  this: Client,
+  options?: { past?: boolean; future?: boolean }
+): Promise<any> {
+  const res = await this.invoke(
+    new raw.functions.stories.ActivateStealthMode(
+      options?.past,
+      options?.future
+    )
+  )
+  return res
+}
+
+export async function getAllStories(
+  this: Client,
+  options?: { next?: boolean; hidden?: boolean; state?: string }
+): Promise<any> {
+  const res = await this.invoke(
+    new raw.functions.stories.GetAllStories(
+      options?.next,
+      options?.hidden,
+      options?.state
+    )
+  )
+  return res
+}
+
+export async function getArchivedStories(
+  this: Client,
+  chatId: PeerLike,
+  fromId: number = 0,
+  limit: number = 100
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const res = await this.invoke(
+    new raw.functions.stories.GetStoriesArchive(
+      peer,
+      fromId,
+      limit
+    )
+  )
+  return res
+}
+
+export async function getChatStories(
+  this: Client,
+  chatId: PeerLike
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const res = await this.invoke(
+    new raw.functions.stories.GetPeerStories(peer)
+  )
+  return res
+}
+
+export async function getPinnedStories(
+  this: Client,
+  chatId: PeerLike,
+  fromId: number = 0,
+  limit: number = 100
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const res = await this.invoke(
+    new raw.functions.stories.GetPinnedStories(
+      peer,
+      fromId,
+      limit
+    )
+  )
+  return res
+}
+
+export async function getStoryViews(
+  this: Client,
+  chatId: PeerLike,
+  storyId: number,
+  options?: {
+    offset?: string
+    limit?: number
+    justContacts?: boolean
+    reactionsFirst?: boolean
+    forwardsFirst?: boolean
+    q?: string
+  }
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const res = await this.invoke(
+    new raw.functions.stories.GetStoryViewsList(
+      peer,
+      storyId,
+      options?.offset ?? '',
+      options?.limit ?? 100,
+      options?.justContacts,
+      options?.reactionsFirst,
+      options?.forwardsFirst,
+      options?.q
+    )
+  )
+  return res
+}
+
+export async function hideChatStories(
+  this: Client,
+  chatId: PeerLike
+): Promise<boolean> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const res = await this.invoke(
+    new raw.functions.stories.TogglePeerStoriesHidden(peer, true)
+  )
+  return Boolean(res)
+}
+
+export async function showChatStories(
+  this: Client,
+  chatId: PeerLike
+): Promise<boolean> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const res = await this.invoke(
+    new raw.functions.stories.TogglePeerStoriesHidden(peer, false)
+  )
+  return Boolean(res)
+}
+
+export async function pinChatStories(
+  this: Client,
+  chatId: PeerLike,
+  storyIds: number | number[]
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const ids = Array.isArray(storyIds) ? storyIds : [storyIds]
+  const res = await this.invoke(
+    new raw.functions.stories.TogglePinned(peer, ids, true)
+  )
+  return res
+}
+
+export async function unpinChatStories(
+  this: Client,
+  chatId: PeerLike,
+  storyIds: number | number[]
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const ids = Array.isArray(storyIds) ? storyIds : [storyIds]
+  const res = await this.invoke(
+    new raw.functions.stories.TogglePinned(peer, ids, false)
+  )
+  return res
+}
+
+export async function readChatStories(
+  this: Client,
+  chatId: PeerLike,
+  maxId: number = 0
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const res = await this.invoke(
+    new raw.functions.stories.ReadStories(peer, maxId || (1 << 31) - 1)
+  )
+  return res
+}
+
+export async function viewStories(
+  this: Client,
+  chatId: PeerLike,
+  storyIds: number | number[]
+): Promise<boolean> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const ids = Array.isArray(storyIds) ? storyIds : [storyIds]
+  const res = await this.invoke(
+    new raw.functions.stories.IncrementStoryViews(peer, ids)
+  )
+  return Boolean(res)
+}
+
+export async function forwardStory(
+  this: Client,
+  chatId: PeerLike,
+  fromChatId: PeerLike,
+  storyId: number
+): Promise<any> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const fromPeer = await this.peerResolver.resolvePeer(fromChatId)
+  const randomId = BigInt(Math.floor(Math.random() * 1e12))
+
+  const res = await this.invoke(
+    new raw.functions.messages.SendMedia(
+      peer,
+      new raw.types.InputMediaStory(fromPeer, storyId),
+      '',
+      randomId
+    )
+  )
+  return res
+}
+

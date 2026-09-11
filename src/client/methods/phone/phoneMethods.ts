@@ -8,16 +8,41 @@ import { PeerLike } from '../../PeerResolver.js'
 
 export async function getCallMembers(
   this: Client,
-  chatId: PeerLike
-): Promise<any> {
+  chatId: PeerLike,
+  limit: number = 100
+): Promise<any[]> {
   const peer = await this.peerResolver.resolvePeer(chatId)
 
-  const res = await this.invoke(
-    new raw.functions.phone.GetGroupCall(
-      new raw.types.InputGroupCall(0n, 0n),
-      100
+  let fullChatRes: any
+  if (peer instanceof raw.types.InputPeerChannel) {
+    fullChatRes = await this.invoke(
+      new raw.functions.channels.GetFullChannel(
+        new raw.types.InputChannel(peer.channel_id, peer.access_hash)
+      )
     )
-  )
+  } else if (peer instanceof raw.types.InputPeerChat) {
+    fullChatRes = await this.invoke(
+      new raw.functions.messages.GetFullChat(peer.chat_id)
+    )
+  } else {
+    throw new Error('Target chat should be group, supergroup or channel.')
+  }
 
-  return res
+  const fullChat = fullChatRes?.full_chat
+  if (!fullChat?.call) {
+    throw new Error('There is no active call in this chat.')
+  }
+
+  const res = (await this.invoke(
+    new raw.functions.phone.GetGroupParticipants(
+      fullChat.call,
+      [],
+      [],
+      '',
+      limit || 100
+    )
+  )) as any
+
+  return res?.participants ?? []
 }
+

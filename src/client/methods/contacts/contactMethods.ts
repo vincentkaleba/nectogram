@@ -5,14 +5,16 @@
 import * as raw from '../../../raw/index.js'
 import type { Client } from '../../Client.js'
 import { PeerLike } from '../../PeerResolver.js'
-import { User } from '../../../types/index.js'
+import { User, Chat } from '../../../types/index.js'
 
 export async function addContact(
   this: Client,
   userId: PeerLike,
   firstName: string,
   lastName: string = '',
-  phone: string = ''
+  phone: string = '',
+  sharePhone: boolean = false,
+  note?: string
 ): Promise<User> {
   const inputPeer = await this.peerResolver.resolvePeer(userId)
 
@@ -21,7 +23,9 @@ export async function addContact(
       inputPeer as any,
       firstName,
       lastName,
-      phone
+      phone,
+      sharePhone,
+      note ? new raw.types.TextWithEntities(note, []) : undefined
     )
   )
 
@@ -33,10 +37,11 @@ export async function addContact(
 
 export async function deleteContacts(
   this: Client,
-  userIds: PeerLike[]
+  userIds: PeerLike | PeerLike[]
 ): Promise<boolean> {
+  const ids = Array.isArray(userIds) ? userIds : [userIds]
   const inputPeers = await Promise.all(
-    userIds.map(id => this.peerResolver.resolvePeer(id))
+    ids.map(id => this.peerResolver.resolvePeer(id))
   )
 
   await this.invoke(
@@ -48,12 +53,41 @@ export async function deleteContacts(
   return true
 }
 
+export async function getBlockedMessageSenders(
+  this: Client,
+  blockList: 'main' | 'stories' = 'main',
+  offset: number = 0,
+  limit: number = 0
+): Promise<(User | Chat)[]> {
+  const total = limit || 100
+  const res = await this.invoke(
+    new raw.functions.contacts.GetBlocked(
+      offset,
+      total,
+      blockList === 'stories'
+    )
+  )
+
+  const results: (User | Chat)[] = []
+  if ('users' in res && Array.isArray((res as any).users)) {
+    for (const u of (res as any).users) {
+      results.push(User._parse(u))
+    }
+  }
+  if ('chats' in res && Array.isArray((res as any).chats)) {
+    for (const c of (res as any).chats) {
+      results.push(Chat._parse(c))
+    }
+  }
+  return results
+}
+
 export async function getContacts(
   this: Client
 ): Promise<User[]> {
   const res = await this.invoke(
     new raw.functions.contacts.GetContacts(
-      0n // hash
+      0n
     )
   )
 
@@ -61,6 +95,34 @@ export async function getContacts(
     return res.users.map((u: any) => User._parse(u))
   }
   return []
+}
+
+export async function getContactsCount(
+  this: Client
+): Promise<number> {
+  const res = await this.invoke(
+    new raw.functions.contacts.GetContacts(
+      0n
+    )
+  )
+
+  if ('contacts' in res && Array.isArray((res as any).contacts)) {
+    return (res as any).contacts.length
+  }
+  if ('users' in res && Array.isArray((res as any).users)) {
+    return (res as any).users.length
+  }
+  return 0
+}
+
+export async function importContacts(
+  this: Client,
+  contacts: raw.base.InputContact[]
+): Promise<raw.base.contacts.ImportedContacts> {
+  const res = await this.invoke(
+    new raw.functions.contacts.ImportContacts(contacts)
+  )
+  return res as raw.base.contacts.ImportedContacts
 }
 
 export async function searchContacts(
@@ -80,3 +142,21 @@ export async function searchContacts(
   }
   return []
 }
+
+export async function setContactNote(
+  this: Client,
+  userId: PeerLike,
+  note?: string
+): Promise<boolean> {
+  const inputPeer = await this.peerResolver.resolvePeer(userId)
+  const textObj = note ? new raw.types.TextWithEntities(note, []) : new raw.types.TextWithEntities('', [])
+
+  const res = await this.invoke(
+    new raw.functions.contacts.UpdateContactNote(
+      inputPeer as any,
+      textObj
+    )
+  )
+  return Boolean(res)
+}
+

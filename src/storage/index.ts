@@ -19,3 +19,4 @@
 export { Storage, type PeerInfo } from './Storage.js'
 export { MemoryStorage } from './MemoryStorage.js'
 export { FileStorage } from './FileStorage.js'
+export { SQLiteStorage } from './SQLiteStorage.js'

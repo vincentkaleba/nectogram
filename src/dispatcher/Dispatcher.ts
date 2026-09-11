@@ -112,7 +112,11 @@ export class Dispatcher {
         const packet = this._updatesQueue.shift()
         if (!packet) continue
         const [update, users, chats] = packet
-        await this.handleUpdate(update, users, chats)
+        try {
+          await this.handleUpdate(update, users, chats)
+        } catch (err: any) {
+          console.error(`❌ [Dispatcher] Unhandled error while processing update ${update?.QUALNAME ?? update?.constructor?.name}:`, err)
+        }
       }
     } finally {
       this._isProcessing = false
@@ -123,137 +127,180 @@ export class Dispatcher {
    * Core update router matching raw updates to high-level types, evaluating filters, and executing callbacks.
    */
   public async handleUpdate(update: any, users: Map<bigint, any>, chats: Map<bigint, any>): Promise<void> {
-    // 1. Merge client usersCache into users Map
-    if (this.client?.usersCache) {
-      for (const [uId, uObj] of this.client.usersCache.entries()) {
-        if (!users.has(uId)) {
-          users.set(uId, uObj)
-        }
-      }
-    }
-
-    // 2. Identify sender userId if update is a message or callback
-    let targetUserId: bigint | undefined
-    if (update instanceof raw.types.UpdateShortMessage) {
-      targetUserId = BigInt(update.user_id)
-    } else if (update instanceof raw.types.UpdateShortChatMessage) {
-      targetUserId = BigInt(update.from_id)
-    } else if (
-      update instanceof raw.types.UpdateNewMessage ||
-      update instanceof raw.types.UpdateNewChannelMessage ||
-      update instanceof raw.types.UpdateNewScheduledMessage ||
-      update instanceof raw.types.UpdateEditMessage ||
-      update instanceof raw.types.UpdateEditChannelMessage
-    ) {
-      if (update.message && update.message instanceof raw.types.Message && update.message.from_id instanceof raw.types.PeerUser) {
-        targetUserId = BigInt(update.message.from_id.user_id)
-      }
-    } else if (update instanceof raw.types.UpdateBotCallbackQuery || update instanceof raw.types.UpdateInlineBotCallbackQuery) {
-      targetUserId = BigInt(update.user_id)
-    }
-
-    // 3. Resolve user details from storage or Telegram API if missing
-    if (targetUserId) {
-      const existing = users.get(targetUserId)
-      const hasDetails = existing && (existing.firstName || existing.first_name || existing.username)
-      if (!hasDetails) {
-        if (this.client?.storage) {
-          try {
-            const peer = await this.client.storage.getPeerById(targetUserId)
-            if (peer && (peer.firstName || peer.username)) {
-              const u = new User({
-                id: targetUserId,
-                firstName: peer.firstName,
-                lastName: peer.lastName,
-                username: peer.username,
-                phone: peer.phone,
-              })
-              users.set(targetUserId, u)
-              this.client.usersCache?.set(targetUserId, u)
-            }
-          } catch {}
-        }
-
-        const stillMissing = !users.has(targetUserId) || !(users.get(targetUserId)?.firstName || users.get(targetUserId)?.first_name || users.get(targetUserId)?.username)
-        if (stillMissing && this.client?.session) {
-          try {
-            let accessHash = 0n
-            if (this.client?.storage) {
-              const p = await this.client.storage.getPeerById(targetUserId)
-              if (p) accessHash = p.accessHash
-            }
-            const fetched = await this.client.invoke(
-              new raw.functions.users.GetUsers([
-                new raw.types.InputUser(targetUserId, accessHash)
-              ])
-            )
-            if (Array.isArray(fetched) && fetched.length > 0) {
-              const rawU = fetched[0]
-              if (rawU instanceof raw.types.User) {
-                const parsedU = User._parse(rawU)
-                users.set(targetUserId, parsedU)
-                this.client.usersCache?.set(targetUserId, parsedU)
-                await this.client.storage?.updatePeer({
-                  id: targetUserId,
-                  accessHash: rawU.access_hash ?? 0n,
-                  type: 'user',
-                  username: rawU.username,
-                  phone: rawU.phone,
-                  firstName: rawU.first_name,
-                  lastName: rawU.last_name,
-                })
-              }
-            }
-          } catch {}
-        }
-      }
-    }
-
-    const { parsedUpdate, handlerClass } = this.parseUpdate(update, users, chats)
-
     try {
+      // 1. Merge client usersCache into users Map and populate storage peer cache
+      if (this.client?.storage) {
+        for (const [uId, uObj] of users.entries()) {
+          const rawU = (uObj as any)?.raw || uObj
+          if (rawU && (rawU.access_hash !== undefined || rawU.accessHash !== undefined)) {
+            await this.client.storage.updatePeer({
+              id: BigInt(uId),
+              accessHash: rawU.access_hash ?? rawU.accessHash ?? 0n,
+              type: 'user',
+              username: rawU.username,
+              phone: rawU.phone,
+              firstName: rawU.first_name ?? rawU.firstName,
+              lastName: rawU.last_name ?? rawU.lastName,
+            })
+          }
+        }
+      }
+      if (this.client?.usersCache) {
+        for (const [uId, uObj] of this.client.usersCache.entries()) {
+          if (!users.has(uId)) {
+            users.set(uId, uObj)
+          }
+        }
+      }
+
+      // 2. Identify sender userId if update is a message or callback
+      const qual = update?.QUALNAME || update?.constructor?.name
+      let targetUserId: bigint | undefined
+      if (qual === 'types.UpdateShortMessage' || update instanceof raw.types.UpdateShortMessage) {
+        targetUserId = BigInt(update.user_id)
+      } else if (qual === 'types.UpdateShortChatMessage' || update instanceof raw.types.UpdateShortChatMessage) {
+        targetUserId = BigInt(update.from_id)
+      } else if (
+        qual === 'types.UpdateNewMessage' ||
+        qual === 'types.UpdateNewChannelMessage' ||
+        qual === 'types.UpdateNewScheduledMessage' ||
+        qual === 'types.UpdateEditMessage' ||
+        qual === 'types.UpdateEditChannelMessage' ||
+        update instanceof raw.types.UpdateNewMessage ||
+        update instanceof raw.types.UpdateNewChannelMessage ||
+        update instanceof raw.types.UpdateNewScheduledMessage ||
+        update instanceof raw.types.UpdateEditMessage ||
+        update instanceof raw.types.UpdateEditChannelMessage
+      ) {
+        if (update.message) {
+          const fromId = update.message.from_id || update.message.fromId
+          if (fromId && (fromId instanceof raw.types.PeerUser || fromId?.QUALNAME === 'types.PeerUser')) {
+            targetUserId = BigInt(fromId.user_id || fromId.userId)
+          }
+        }
+      } else if (
+        qual === 'types.UpdateBotCallbackQuery' ||
+        qual === 'types.UpdateInlineBotCallbackQuery' ||
+        update instanceof raw.types.UpdateBotCallbackQuery ||
+        update instanceof raw.types.UpdateInlineBotCallbackQuery
+      ) {
+        targetUserId = BigInt(update.user_id || update.userId)
+      }
+
+      // 3. Resolve user details from storage or Telegram API if missing
+      if (targetUserId) {
+        const existing = users.get(targetUserId)
+        const hasDetails = existing && (existing.firstName || existing.first_name || existing.username)
+        if (!hasDetails) {
+          if (this.client?.storage) {
+            try {
+              const peer = await this.client.storage.getPeerById(targetUserId)
+              if (peer && (peer.firstName || peer.username)) {
+                const u = new User({
+                  id: targetUserId,
+                  firstName: peer.firstName,
+                  lastName: peer.lastName,
+                  username: peer.username,
+                  phone: peer.phone,
+                })
+                users.set(targetUserId, u)
+                this.client.usersCache?.set(targetUserId, u)
+              }
+            } catch {}
+          }
+
+          const stillMissing = !users.has(targetUserId) || !(users.get(targetUserId)?.firstName || users.get(targetUserId)?.first_name || users.get(targetUserId)?.username)
+          if (stillMissing && this.client?.session) {
+            try {
+              let accessHash = 0n
+              if (this.client?.storage) {
+                const p = await this.client.storage.getPeerById(targetUserId)
+                if (p) accessHash = p.accessHash
+              }
+              const fetched = await this.client.invoke(
+                new raw.functions.users.GetUsers([
+                  new raw.types.InputUser(targetUserId, accessHash)
+                ])
+              )
+              if (Array.isArray(fetched) && fetched.length > 0) {
+                const rawU = fetched[0]
+                if (rawU instanceof raw.types.User) {
+                  const parsedU = User._parse(rawU)
+                  users.set(targetUserId, parsedU)
+                  this.client.usersCache?.set(targetUserId, parsedU)
+                  await this.client.storage?.updatePeer({
+                    id: targetUserId,
+                    accessHash: rawU.access_hash ?? 0n,
+                    type: 'user',
+                    username: rawU.username,
+                    phone: rawU.phone,
+                    firstName: rawU.first_name,
+                    lastName: rawU.last_name,
+                  })
+                }
+              }
+            } catch {}
+          }
+        }
+      }
+
+      const { parsedUpdate, handlerClass } = this.parseUpdate(update, users, chats)
+      console.log(`🔍 [Dispatcher] parseUpdate result: handlerClass=${handlerClass?.name ?? 'null'}, parsedUpdate=${parsedUpdate ? parsedUpdate.constructor?.name : 'null'}, groups=${this.groups.size}`)
+
       for (const groupHandlers of this.groups.values()) {
         for (const handler of groupHandlers) {
           if (handler instanceof ErrorHandler) {
             continue
           }
 
+          console.log(`  🔸 Checking handler: ${handler.constructor.name} vs handlerClass: ${handlerClass?.name ?? 'null'}`)
+
           let matched = false
           let checkResult = false
 
-          if (handlerClass && handler instanceof handlerClass && parsedUpdate) {
-            checkResult = await handler.check(this.client, parsedUpdate)
-            if (checkResult) {
-              matched = true
-              try {
-                await handler.callback(this.client, parsedUpdate)
-              } catch (err: any) {
-                if (err instanceof StopPropagation) {
-                  throw err
-                } else if (err instanceof ContinuePropagation) {
-                  // Continue to next handler in same loop
-                  continue
-                } else {
-                  await this.handleException(err, handler, update, users, chats)
+          try {
+            if (handlerClass && (handler instanceof handlerClass || handler.constructor?.name === handlerClass.name) && parsedUpdate) {
+              checkResult = await handler.check(this.client, parsedUpdate)
+              console.log(`  🔸 Filter check result: ${checkResult}`)
+              if (checkResult) {
+                matched = true
+                try {
+                  console.log(`  🚀 Executing callback for ${handler.constructor.name}...`)
+                  await handler.callback(this.client, parsedUpdate)
+                  console.log(`  ✅ Callback execution completed for ${handler.constructor.name}`)
+                } catch (err: any) {
+                  console.error(`  ❌ Exception in callback execution:`, err)
+                  if (err instanceof StopPropagation) {
+                    throw err
+                  } else if (err instanceof ContinuePropagation) {
+                    continue
+                  } else {
+                    await this.handleException(err, handler, update, users, chats)
+                  }
+                }
+              }
+            } else if (handler instanceof RawUpdateHandler || handler.constructor?.name === 'RawUpdateHandler') {
+              checkResult = await handler.check(this.client, update)
+              if (checkResult) {
+                matched = true
+                try {
+                  await handler.callback(this.client, update, users, chats)
+                } catch (err: any) {
+                  if (err instanceof StopPropagation) {
+                    throw err
+                  } else if (err instanceof ContinuePropagation) {
+                    continue
+                  } else {
+                    await this.handleException(err, handler, update, users, chats)
+                  }
                 }
               }
             }
-          } else if (handler instanceof RawUpdateHandler) {
-            checkResult = await handler.check(this.client, update)
-            if (checkResult) {
-              matched = true
-              try {
-                await handler.callback(this.client, update, users, chats)
-              } catch (err: any) {
-                if (err instanceof StopPropagation) {
-                  throw err
-                } else if (err instanceof ContinuePropagation) {
-                  continue
-                } else {
-                  await this.handleException(err, handler, update, users, chats)
-                }
-              }
+          } catch (filterOrCheckErr: any) {
+            if (filterOrCheckErr instanceof StopPropagation) {
+              throw filterOrCheckErr
             }
+            await this.handleException(filterOrCheckErr, handler, update, users, chats)
           }
 
           if (matched) {
@@ -267,30 +314,38 @@ export class Dispatcher {
         // Stop propagation completely across all groups
         return
       }
+      console.error(`❌ [Dispatcher] Exception in update handling:`, err)
     }
   }
 
   private parseUpdate(update: any, users: Map<bigint, any>, chats: Map<bigint, any>): { parsedUpdate: any; handlerClass?: any } {
     if (!update) return { parsedUpdate: null }
 
+    const qual = update?.QUALNAME || update?.constructor?.name
+
     if (
+      qual === 'types.UpdateEditMessage' ||
+      qual === 'types.UpdateEditChannelMessage' ||
       update instanceof raw.types.UpdateEditMessage ||
       update instanceof raw.types.UpdateEditChannelMessage
     ) {
-      if (update.message && update.message instanceof raw.types.Message) {
+      if (update.message) {
         const parsed = Message._parse(update.message, users, chats)
         return { parsedUpdate: parsed, handlerClass: EditedMessageHandler }
       }
     } else if (
+      qual === 'types.UpdateNewMessage' ||
+      qual === 'types.UpdateNewChannelMessage' ||
+      qual === 'types.UpdateNewScheduledMessage' ||
       update instanceof raw.types.UpdateNewMessage ||
       update instanceof raw.types.UpdateNewChannelMessage ||
       update instanceof raw.types.UpdateNewScheduledMessage
     ) {
-      if (update.message && update.message instanceof raw.types.Message) {
+      if (update.message) {
         const parsed = Message._parse(update.message, users, chats)
         return { parsedUpdate: parsed, handlerClass: MessageHandler }
       }
-    } else if (update instanceof raw.types.UpdateShortMessage) {
+    } else if (qual === 'types.UpdateShortMessage' || update instanceof raw.types.UpdateShortMessage) {
       const rawMsg = new raw.types.Message(
         update.id,
         new raw.types.PeerUser(update.user_id),
@@ -314,7 +369,7 @@ export class Dispatcher {
       )
       const parsed = Message._parse(rawMsg, users, chats)
       return { parsedUpdate: parsed, handlerClass: MessageHandler }
-    } else if (update instanceof raw.types.UpdateShortChatMessage) {
+    } else if (qual === 'types.UpdateShortChatMessage' || update instanceof raw.types.UpdateShortChatMessage) {
       const rawMsg = new raw.types.Message(
         update.id,
         new raw.types.PeerChat(update.chat_id),
@@ -338,7 +393,12 @@ export class Dispatcher {
       )
       const parsed = Message._parse(rawMsg, users, chats)
       return { parsedUpdate: parsed, handlerClass: MessageHandler }
-    } else if (update instanceof raw.types.UpdateBotCallbackQuery || update instanceof raw.types.UpdateInlineBotCallbackQuery) {
+    } else if (
+      qual === 'types.UpdateBotCallbackQuery' ||
+      qual === 'types.UpdateInlineBotCallbackQuery' ||
+      update instanceof raw.types.UpdateBotCallbackQuery ||
+      update instanceof raw.types.UpdateInlineBotCallbackQuery
+    ) {
       const parsed = CallbackQuery._parse(update as any, users)
       return { parsedUpdate: parsed, handlerClass: CallbackQueryHandler }
     }
@@ -366,7 +426,7 @@ export class Dispatcher {
     }
 
     if (!handled) {
-      console.error(`Unhandled exception in ${handler.constructor.name}:`, err)
+      console.error(`❌ [Dispatcher] Unhandled exception in ${handler.constructor.name}:`, err)
     }
   }
 }

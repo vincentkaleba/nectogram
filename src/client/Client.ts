@@ -17,7 +17,7 @@
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
 import * as raw from '../raw/index.js'
-import { Storage, MemoryStorage, FileStorage } from '../storage/index.js'
+import { Storage, MemoryStorage, FileStorage, SQLiteStorage } from '../storage/index.js'
 import { Connection } from '../connection/Connection.js'
 import { Session, AuthKey, Handshake } from '../session/index.js'
 import {
@@ -40,6 +40,10 @@ import {
   DeletedMessagesHandler,
   ConnectHandler,
   DisconnectHandler,
+  BusinessConnectionHandler,
+  BusinessMessageHandler,
+  EditedBusinessMessageHandler,
+  DeletedBusinessMessagesHandler,
   RawUpdateHandler,
   ErrorHandler,
 } from '../dispatcher/index.js'
@@ -87,6 +91,10 @@ import {
   sendVoice,
   getChatHistory,
   getChatHistoryCount,
+  getDiscussionRepliesCount,
+  searchGlobalCount,
+  addToGifs,
+  translateText,
   sendReaction,
   setChatDescription,
   createChannel,
@@ -95,6 +103,17 @@ import {
   answerInlineQuery,
   getCommonChats,
   getChatPhotos,
+  getChatPhotosCount,
+  getChatAudios,
+  getChatAudiosCount,
+  checkUsername,
+  deleteProfilePhotos,
+  setProfilePhoto,
+  updateStatus,
+  updateBirthday,
+  setEmojiStatus,
+  setPersonalChannel,
+  getDefaultEmojiStatuses,
   saveFile,
   resolvePeer,
   recoverGaps,
@@ -103,6 +122,7 @@ import {
   signIn,
   signUp,
   logOut,
+  exportLoginToken,
   acceptTermsOfService,
   changePhoneNumber,
   getActiveSessions,
@@ -128,10 +148,25 @@ import {
   deleteChatInviteLink,
   approveChatJoinRequest,
   declineChatJoinRequest,
+  approveAllChatJoinRequests,
+  declineAllChatJoinRequests,
+  deleteChatAdminInviteLinks,
+  exportChatInviteLink,
+  getChatAdminInviteLinks,
+  getChatAdminInviteLinksCount,
+  getChatAdminsWithInviteLinks,
+  getChatInviteLink,
+  getChatInviteLinkJoiners,
+  getChatInviteLinkJoinersCount,
+  getChatJoinRequests,
   addContact,
   deleteContacts,
   getContacts,
   searchContacts,
+  getBlockedMessageSenders,
+  getContactsCount,
+  importContacts,
+  setContactNote,
   // Phase 3 - Password, Folders, Premium, Phone
   enableCloudPassword,
   changeCloudPassword,
@@ -139,6 +174,7 @@ import {
   checkChatFolderInviteLink,
   applyBoost,
   getBoostsStatus,
+  getBoosts,
   getCallMembers,
   // Phase 4 - Business, Stories, Payments
   getBusinessConnection,
@@ -148,10 +184,33 @@ import {
   transferBusinessAccountStars,
   sendStory,
   getStories,
-  deleteStories,
+  canPostStories,
+  editStoryCaption,
+  editStoryMedia,
+  editStoryPrivacy,
+  enableStealthMode,
+  getAllStories,
+  getArchivedStories,
+  getChatStories,
+  getPinnedStories,
+  getStoryViews,
+  hideChatStories,
+  showChatStories,
+  pinChatStories,
+  unpinChatStories,
+  readChatStories,
+  viewStories,
+  forwardStory,
   getStarsBalance,
   getAvailableGifts,
   sendGift,
+  applyGiftCode,
+  checkGiftCode,
+  convertGiftToStars,
+  getPaymentForm,
+  sendPaymentForm,
+  transferGift,
+  StopTransmissionError,
   // Extended Chats
   promoteChatMember,
   restrictChatMember,
@@ -332,7 +391,7 @@ export class Client {
     } else if (options.inMemory) {
       this.storage = new MemoryStorage()
     } else {
-      this.storage = new FileStorage(this.name)
+      this.storage = new SQLiteStorage(this.name)
     }
 
     this.dispatcher = new Dispatcher(this)
@@ -573,6 +632,13 @@ export class Client {
     return await this.storage.exportSessionString()
   }
 
+  /**
+   * Stop current file transmission.
+   */
+  public stopTransmission(): never {
+    throw new StopTransmissionError()
+  }
+
   // Dispatcher & Handler Decorators / Helpers
   public addHandler(handler: Handler, group: number = 0): void {
     this.dispatcher.addHandler(handler, group)
@@ -583,9 +649,12 @@ export class Client {
   }
 
   private _resolveHandlerArgs(filter?: any, callback?: any): { cb: any; flt: any } {
-    const cb = typeof filter === 'function' ? filter : callback
-    const flt = typeof filter === 'function' ? undefined : filter
-    return { cb, flt }
+    if (typeof callback === 'function') {
+      return { cb: callback, flt: filter }
+    } else if (typeof filter === 'function') {
+      return { cb: filter, flt: undefined }
+    }
+    return { cb: undefined, flt: undefined }
   }
 
   public onMessage(filter?: Filter | ((client: Client, message: Message) => any), callback?: (client: Client, message: Message) => any): void {
@@ -676,6 +745,27 @@ export class Client {
     if (cb) this.addHandler(new ErrorHandler(cb, flt))
   }
 
+  public onBusinessConnection(filter?: Filter | ((client: Client, connection: any) => any), callback?: (client: Client, connection: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new BusinessConnectionHandler(cb, flt))
+  }
+
+  public onBusinessMessage(filter?: Filter | ((client: Client, message: any) => any), callback?: (client: Client, message: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new BusinessMessageHandler(cb, flt))
+  }
+
+  public onEditedBusinessMessage(filter?: Filter | ((client: Client, message: any) => any), callback?: (client: Client, message: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new EditedBusinessMessageHandler(cb, flt))
+  }
+
+  public onDeletedBusinessMessages(filter?: Filter | ((client: Client, messages: any) => any), callback?: (client: Client, messages: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new DeletedBusinessMessagesHandler(cb, flt))
+  }
+
+
   // API Methods
   public getMe = getMe.bind(this)
   public signInBot = signInBot.bind(this)
@@ -716,6 +806,10 @@ export class Client {
   public sendVoice = sendVoice.bind(this)
   public getChatHistory = getChatHistory.bind(this)
   public getChatHistoryCount = getChatHistoryCount.bind(this)
+  public getDiscussionRepliesCount = getDiscussionRepliesCount.bind(this)
+  public searchGlobalCount = searchGlobalCount.bind(this)
+  public addToGifs = addToGifs.bind(this)
+  public translateText = translateText.bind(this)
   public sendReaction = sendReaction.bind(this)
   public setChatDescription = setChatDescription.bind(this)
   public createChannel = createChannel.bind(this)
@@ -724,12 +818,24 @@ export class Client {
   public answerInlineQuery = answerInlineQuery.bind(this)
   public getCommonChats = getCommonChats.bind(this)
   public getChatPhotos = getChatPhotos.bind(this)
+  public getChatPhotosCount = getChatPhotosCount.bind(this)
+  public getChatAudios = getChatAudios.bind(this)
+  public getChatAudiosCount = getChatAudiosCount.bind(this)
+  public checkUsername = checkUsername.bind(this)
+  public deleteProfilePhotos = deleteProfilePhotos.bind(this)
+  public setProfilePhoto = setProfilePhoto.bind(this)
+  public updateStatus = updateStatus.bind(this)
+  public updateBirthday = updateBirthday.bind(this)
+  public setEmojiStatus = setEmojiStatus.bind(this)
+  public setPersonalChannel = setPersonalChannel.bind(this)
+  public getDefaultEmojiStatuses = getDefaultEmojiStatuses.bind(this)
   public saveFile = saveFile.bind(this)
   public sendCode = sendCode.bind(this)
   public resendCode = resendCode.bind(this)
   public signIn = signIn.bind(this)
   public signUp = signUp.bind(this)
   public logOut = logOut.bind(this)
+  public exportLoginToken = exportLoginToken.bind(this)
   public acceptTermsOfService = acceptTermsOfService.bind(this)
   public updateProfile = updateProfile.bind(this)
   public setUsername = setUsername.bind(this)
@@ -743,10 +849,25 @@ export class Client {
   public deleteChatInviteLink = deleteChatInviteLink.bind(this)
   public approveChatJoinRequest = approveChatJoinRequest.bind(this)
   public declineChatJoinRequest = declineChatJoinRequest.bind(this)
+  public approveAllChatJoinRequests = approveAllChatJoinRequests.bind(this)
+  public declineAllChatJoinRequests = declineAllChatJoinRequests.bind(this)
+  public deleteChatAdminInviteLinks = deleteChatAdminInviteLinks.bind(this)
+  public exportChatInviteLink = exportChatInviteLink.bind(this)
+  public getChatAdminInviteLinks = getChatAdminInviteLinks.bind(this)
+  public getChatAdminInviteLinksCount = getChatAdminInviteLinksCount.bind(this)
+  public getChatAdminsWithInviteLinks = getChatAdminsWithInviteLinks.bind(this)
+  public getChatInviteLink = getChatInviteLink.bind(this)
+  public getChatInviteLinkJoiners = getChatInviteLinkJoiners.bind(this)
+  public getChatInviteLinkJoinersCount = getChatInviteLinkJoinersCount.bind(this)
+  public getChatJoinRequests = getChatJoinRequests.bind(this)
   public addContact = addContact.bind(this)
   public deleteContacts = deleteContacts.bind(this)
   public getContacts = getContacts.bind(this)
   public searchContacts = searchContacts.bind(this)
+  public getBlockedMessageSenders = getBlockedMessageSenders.bind(this)
+  public getContactsCount = getContactsCount.bind(this)
+  public importContacts = importContacts.bind(this)
+  public setContactNote = setContactNote.bind(this)
 
   // Phase 3 - Password / 2FA
   public enableCloudPassword = enableCloudPassword.bind(this)
@@ -759,6 +880,7 @@ export class Client {
   // Phase 3 - Premium
   public applyBoost = applyBoost.bind(this)
   public getBoostsStatus = getBoostsStatus.bind(this)
+  public getBoosts = getBoosts.bind(this)
 
   // Phase 3 - Phone / Group Calls
   public getCallMembers = getCallMembers.bind(this)
@@ -769,12 +891,34 @@ export class Client {
   // Phase 4 - Stories
   public sendStory = sendStory.bind(this)
   public getStories = getStories.bind(this)
-  public deleteStories = deleteStories.bind(this)
+  public canPostStories = canPostStories.bind(this)
+  public editStoryCaption = editStoryCaption.bind(this)
+  public editStoryMedia = editStoryMedia.bind(this)
+  public editStoryPrivacy = editStoryPrivacy.bind(this)
+  public enableStealthMode = enableStealthMode.bind(this)
+  public getAllStories = getAllStories.bind(this)
+  public getArchivedStories = getArchivedStories.bind(this)
+  public getChatStories = getChatStories.bind(this)
+  public getPinnedStories = getPinnedStories.bind(this)
+  public getStoryViews = getStoryViews.bind(this)
+  public hideChatStories = hideChatStories.bind(this)
+  public showChatStories = showChatStories.bind(this)
+  public pinChatStories = pinChatStories.bind(this)
+  public unpinChatStories = unpinChatStories.bind(this)
+  public readChatStories = readChatStories.bind(this)
+  public viewStories = viewStories.bind(this)
+  public forwardStory = forwardStory.bind(this)
 
   // Phase 4 - Payments
   public getStarsBalance = getStarsBalance.bind(this)
   public getAvailableGifts = getAvailableGifts.bind(this)
   public sendGift = sendGift.bind(this)
+  public applyGiftCode = applyGiftCode.bind(this)
+  public checkGiftCode = checkGiftCode.bind(this)
+  public convertGiftToStars = convertGiftToStars.bind(this)
+  public getPaymentForm = getPaymentForm.bind(this)
+  public sendPaymentForm = sendPaymentForm.bind(this)
+  public transferGift = transferGift.bind(this)
 
   // Extended Chat Management
   public promoteChatMember = promoteChatMember.bind(this)

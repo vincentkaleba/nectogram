@@ -17,11 +17,14 @@
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
 import * as raw from '../../raw/index.js'
+import { ButtonStyle } from '../../enums/index.js'
 
 export type ButtonStyleOption =
+  | 'default'
   | 'primary'
   | 'danger'
   | 'success'
+  | ButtonStyle
   | { bgPrimary?: boolean; bgDanger?: boolean; bgSuccess?: boolean; icon?: bigint }
 
 export interface InlineKeyboardButtonOptions {
@@ -82,11 +85,12 @@ export class InlineKeyboardButton {
 
     let buttonStyle: raw.types.KeyboardButtonStyle | undefined
     if (this.style) {
-      if (this.style === 'primary') {
+      const s = String(this.style)
+      if (s === 'primary' || s === ButtonStyle.PRIMARY) {
         buttonStyle = new raw.types.KeyboardButtonStyle(true, false, false, undefined)
-      } else if (this.style === 'danger') {
+      } else if (s === 'danger' || s === ButtonStyle.DANGER) {
         buttonStyle = new raw.types.KeyboardButtonStyle(false, true, false, undefined)
-      } else if (this.style === 'success') {
+      } else if (s === 'success' || s === ButtonStyle.SUCCESS) {
         buttonStyle = new raw.types.KeyboardButtonStyle(false, false, true, undefined)
       } else if (typeof this.style === 'object') {
         buttonStyle = new raw.types.KeyboardButtonStyle(

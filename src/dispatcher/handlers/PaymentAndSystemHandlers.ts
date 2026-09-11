@@ -40,3 +40,28 @@ export class DisconnectHandler extends Handler {
     super(callback)
   }
 }
+
+export class BusinessConnectionHandler extends Handler {
+  constructor(callback: (client: any, connection: any) => any, filter?: Filter) {
+    super(callback, filter)
+  }
+}
+
+export class BusinessMessageHandler extends Handler {
+  constructor(callback: (client: any, message: any) => any, filter?: Filter) {
+    super(callback, filter)
+  }
+}
+
+export class EditedBusinessMessageHandler extends Handler {
+  constructor(callback: (client: any, message: any) => any, filter?: Filter) {
+    super(callback, filter)
+  }
+}
+
+export class DeletedBusinessMessagesHandler extends Handler {
+  constructor(callback: (client: any, messages: any) => any, filter?: Filter) {
+    super(callback, filter)
+  }
+}
+
