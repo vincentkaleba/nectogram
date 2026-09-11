@@ -69,6 +69,10 @@ export class User {
     return undefined
   }
 
+  public get displayName(): string {
+    return this.fullName ?? `User ${this.id}`
+  }
+
   /**
    * Parse a raw TL User object into a high-level User instance.
    */
