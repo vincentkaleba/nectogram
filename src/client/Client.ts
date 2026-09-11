@@ -82,6 +82,7 @@ import {
   sendPhoto,
   sendVideo,
   sendDocument,
+  sendAnimation,
   sendAudio,
   sendVoice,
   getChatHistory,
@@ -551,6 +552,7 @@ export class Client {
   public sendPhoto = sendPhoto.bind(this)
   public sendVideo = sendVideo.bind(this)
   public sendDocument = sendDocument.bind(this)
+  public sendAnimation = sendAnimation.bind(this)
   public sendAudio = sendAudio.bind(this)
   public sendVoice = sendVoice.bind(this)
   public getChatHistory = getChatHistory.bind(this)

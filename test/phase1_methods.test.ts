@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { Client } from '../src/client/Client.js'
 
 describe('Phase 1 Methods Test Suite', () => {
@@ -8,6 +8,7 @@ describe('Phase 1 Methods Test Suite', () => {
     expect(typeof client.sendPhoto).toBe('function')
     expect(typeof client.sendVideo).toBe('function')
     expect(typeof client.sendDocument).toBe('function')
+    expect(typeof client.sendAnimation).toBe('function')
     expect(typeof client.sendAudio).toBe('function')
     expect(typeof client.sendVoice).toBe('function')
     expect(typeof client.getChatHistory).toBe('function')

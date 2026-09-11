@@ -17,6 +17,21 @@ export interface BaseMediaOptions {
   disableNotification?: boolean
   replyToMessageId?: number
   showCaptionAboveMedia?: boolean
+  thumb?: string | Buffer
+}
+
+export interface VideoMediaOptions extends BaseMediaOptions {
+  duration?: number
+  width?: number
+  height?: number
+  videoCover?: string | Buffer
+  videoTimestamp?: number
+  supportsStreaming?: boolean
+}
+
+export interface DocumentMediaOptions extends BaseMediaOptions {
+  mimeType?: string
+  fileName?: string
 }
 
 export async function sendPhoto(
@@ -75,7 +90,7 @@ export async function sendVideo(
   this: Client,
   chatId: PeerLike,
   video: string | Buffer,
-  options?: BaseMediaOptions & { duration?: number; width?: number; height?: number }
+  options?: VideoMediaOptions
 ): Promise<Message> {
   const peer = await this.peerResolver.resolvePeer(chatId)
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
@@ -90,13 +105,16 @@ export async function sendVideo(
     )
   } else {
     const uploadedFile = await saveFile.call(this, video)
+    const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
+    const videoCoverFile = options?.videoCover ? await saveFile.call(this, options.videoCover) : undefined
+
     const attributes: any[] = [
       new raw.types.DocumentAttributeVideo(
         options?.duration ?? 0,
         options?.width ?? 0,
         options?.height ?? 0,
         false,
-        false
+        options?.supportsStreaming ?? false
       )
     ]
     inputMedia = new raw.types.InputMediaUploadedDocument(
@@ -106,10 +124,10 @@ export async function sendVideo(
       undefined,
       undefined,
       options?.hasSpoiler,
+      thumbFile,
       undefined,
-      undefined,
-      undefined,
-      undefined,
+      videoCoverFile as any,
+      options?.videoTimestamp,
       options?.ttlSeconds
     )
   }
@@ -142,7 +160,7 @@ export async function sendDocument(
   this: Client,
   chatId: PeerLike,
   document: string | Buffer,
-  options?: BaseMediaOptions & { mimeType?: string; fileName?: string }
+  options?: DocumentMediaOptions
 ): Promise<Message> {
   const peer = await this.peerResolver.resolvePeer(chatId)
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
@@ -157,6 +175,8 @@ export async function sendDocument(
     )
   } else {
     const uploadedFile = await saveFile.call(this, document)
+    const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
+
     const attributes: any[] = [
       new raw.types.DocumentAttributeFilename(options?.fileName ?? 'file.dat')
     ]
@@ -167,13 +187,74 @@ export async function sendDocument(
       undefined,
       undefined,
       options?.hasSpoiler,
-      undefined,
+      thumbFile,
       undefined,
       undefined,
       undefined,
       options?.ttlSeconds
     )
   }
+
+  const { text, entities } = options?.caption ? parseText(options.caption) : { text: '', entities: [] }
+
+  const res = await this.invoke(
+    new raw.functions.messages.SendMedia(
+      peer,
+      inputMedia,
+      text,
+      randomId,
+      options?.disableNotification ? true : undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      options?.showCaptionAboveMedia ? true : undefined,
+      undefined,
+      options?.replyToMessageId ? new raw.types.InputReplyToMessage(options.replyToMessageId) : undefined,
+      undefined,
+      entities.length > 0 ? (entities as any) : undefined
+    )
+  )
+
+  return Message._parse(res as any)
+}
+
+export async function sendAnimation(
+  this: Client,
+  chatId: PeerLike,
+  animation: string | Buffer,
+  options?: BaseMediaOptions & { duration?: number; width?: number; height?: number }
+): Promise<Message> {
+  const peer = await this.peerResolver.resolvePeer(chatId)
+  const randomId = BigInt(Math.floor(Math.random() * 1e12))
+
+  const uploadedFile = await saveFile.call(this, animation)
+  const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
+
+  const attributes: any[] = [
+    new raw.types.DocumentAttributeAnimated(),
+    new raw.types.DocumentAttributeVideo(
+      options?.duration ?? 0,
+      options?.width ?? 0,
+      options?.height ?? 0,
+      false,
+      false
+    )
+  ]
+
+  const inputMedia = new raw.types.InputMediaUploadedDocument(
+    uploadedFile,
+    'video/mp4',
+    attributes,
+    undefined,
+    undefined,
+    options?.hasSpoiler,
+    thumbFile,
+    undefined,
+    undefined,
+    undefined,
+    options?.ttlSeconds
+  )
 
   const { text, entities } = options?.caption ? parseText(options.caption) : { text: '', entities: [] }
 
@@ -209,6 +290,8 @@ export async function sendAudio(
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
 
   const uploadedFile = await saveFile.call(this, audio)
+  const thumbFile = options?.thumb ? await saveFile.call(this, options.thumb) : undefined
+
   const attributes: any[] = [
     new raw.types.DocumentAttributeAudio(
       options?.duration ?? 0,
@@ -220,7 +303,11 @@ export async function sendAudio(
   const inputMedia = new raw.types.InputMediaUploadedDocument(
     uploadedFile,
     'audio/mpeg',
-    attributes
+    attributes,
+    undefined,
+    undefined,
+    undefined,
+    thumbFile
   )
 
   const { text, entities } = options?.caption ? parseText(options.caption) : { text: '', entities: [] }
