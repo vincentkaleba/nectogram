@@ -48,9 +48,7 @@ async function main() {
       ],
     ])
 
-    const userMention = message.fromUser
-      ? `[${message.fromUser.displayName}](tg://user?id=${message.fromUser.id})`
-      : 'User'
+    const userMention = message.fromUser?.mention ?? 'User'
 
     // 1. Send Rich Card preview
     const richCard = new RichMessage({

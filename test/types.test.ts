@@ -77,6 +77,7 @@ describe('High-Level Types Module', () => {
       expect(user.lastName).toBe('Doe')
       expect(user.fullName).toBe('John Doe')
       expect(user.username).toBe('johndoe')
+      expect(user.mention).toBe('[John Doe](tg://user?id=123456789)')
     })
   })
 

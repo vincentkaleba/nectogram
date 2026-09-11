@@ -74,6 +74,13 @@ export class User {
   }
 
   /**
+   * Get a Markdown formatted clickable mention for this user (e.g. [John](tg://user?id=123456)).
+   */
+  public get mention(): string {
+    return `[${this.displayName}](tg://user?id=${this.id})`
+  }
+
+  /**
    * Parse a raw TL User object into a high-level User instance.
    */
   public static _parse(rawUser: raw.types.User): User {
