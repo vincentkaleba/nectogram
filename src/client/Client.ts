@@ -20,7 +20,29 @@ import * as raw from '../raw/index.js'
 import { Storage, MemoryStorage, FileStorage } from '../storage/index.js'
 import { Connection } from '../connection/Connection.js'
 import { Session, AuthKey, Handshake } from '../session/index.js'
-import { Dispatcher, Handler, MessageHandler, CallbackQueryHandler } from '../dispatcher/index.js'
+import {
+  Dispatcher,
+  Handler,
+  MessageHandler,
+  CallbackQueryHandler,
+  EditedMessageHandler,
+  InlineQueryHandler,
+  ChosenInlineResultHandler,
+  ChatMemberUpdatedHandler,
+  ChatJoinRequestHandler,
+  MessageReactionHandler,
+  MessageReactionCountHandler,
+  PollHandler,
+  StoryHandler,
+  PreCheckoutQueryHandler,
+  ShippingQueryHandler,
+  UserStatusHandler,
+  DeletedMessagesHandler,
+  ConnectHandler,
+  DisconnectHandler,
+  RawUpdateHandler,
+  ErrorHandler,
+} from '../dispatcher/index.js'
 import { Filter } from '../filters.js'
 import { User, Message } from '../types/index.js'
 import { PeerResolver } from './PeerResolver.js'
@@ -44,11 +66,15 @@ export interface ClientOptions {
   name?: string
   apiId: number
   apiHash: string
+  botToken?: string
   sessionString?: string
   storage?: Storage
   testMode?: boolean
   inMemory?: boolean
   workers?: number
+  noUpdates?: boolean
+  sleepThreshold?: number
+  maxMessageCacheSize?: number
   parseMode?: ParseMode
   appVersion?: string
   deviceModel?: string
@@ -62,7 +88,12 @@ export class Client {
   public readonly name: string
   public readonly apiId: number
   public readonly apiHash: string
+  public readonly botToken?: string
   public readonly testMode: boolean
+  public readonly workers: number
+  public readonly noUpdates: boolean
+  public readonly sleepThreshold: number
+  public readonly maxMessageCacheSize: number
   public parseMode: ParseMode
   public appVersion: string
   public deviceModel: string
@@ -85,7 +116,12 @@ export class Client {
     this.name = options.name ?? 'nectogram'
     this.apiId = options.apiId
     this.apiHash = options.apiHash
+    this.botToken = options.botToken
     this.testMode = options.testMode ?? false
+    this.workers = options.workers ?? 16
+    this.noUpdates = options.noUpdates ?? false
+    this.sleepThreshold = options.sleepThreshold ?? 10
+    this.maxMessageCacheSize = options.maxMessageCacheSize ?? 1000
     this.parseMode = options.parseMode ?? ParseMode.MARKDOWN
     this.appVersion = options.appVersion ?? '1.0.0'
     this.deviceModel = options.deviceModel ?? 'Node.js'
@@ -214,12 +250,27 @@ export class Client {
   }
 
   /**
-   * Start the client: connect, fetch self user info (getMe), and start update dispatcher.
+   * Start the client: connect, perform auto-login if botToken provided, fetch self user info (getMe), and start update dispatcher.
    */
   public async start(): Promise<User> {
     await this.connect()
+
+    if (this.botToken) {
+      try {
+        const isBot = await this.storage.getIsBot()
+        const userId = await this.storage.getUserId()
+        if (!isBot || !userId) {
+          await this.signInBot(this.botToken)
+        }
+      } catch {
+        await this.signInBot(this.botToken)
+      }
+    }
+
     const selfUser = await this.getMe()
-    this.dispatcher.start()
+    if (!this.noUpdates) {
+      this.dispatcher.start()
+    }
     return selfUser
   }
 
@@ -229,6 +280,34 @@ export class Client {
   public async stop(): Promise<void> {
     this.dispatcher.stop()
     await this.disconnect()
+  }
+
+  /**
+   * Restart the client session and dispatcher.
+   */
+  public async restart(): Promise<User> {
+    await this.stop()
+    return await this.start()
+  }
+
+  /**
+   * Run the client: start, execute optional startup callback, and wait for SIGINT/SIGTERM signals to gracefully stop.
+   */
+  public async run(callback?: (client: Client) => any): Promise<void> {
+    await this.start()
+    if (callback) {
+      await callback(this)
+    }
+    return new Promise<void>((resolve) => {
+      const shutdown = async () => {
+        process.off('SIGINT', shutdown)
+        process.off('SIGTERM', shutdown)
+        await this.stop()
+        resolve()
+      }
+      process.on('SIGINT', shutdown)
+      process.on('SIGTERM', shutdown)
+    })
   }
 
   /**
@@ -306,24 +385,98 @@ export class Client {
     this.dispatcher.removeHandler(handler, group)
   }
 
-  public onMessage(filter?: Filter, callback?: (client: Client, message: Message) => any): void {
-    if (typeof filter === 'function' && !callback) {
-      callback = filter as any
-      filter = undefined
-    }
-    if (callback) {
-      this.addHandler(new MessageHandler(callback, filter))
-    }
+  private _resolveHandlerArgs(filter?: any, callback?: any): { cb: any; flt: any } {
+    const cb = typeof filter === 'function' ? filter : callback
+    const flt = typeof filter === 'function' ? undefined : filter
+    return { cb, flt }
   }
 
-  public onCallbackQuery(filter?: Filter, callback?: (client: Client, query: any) => any): void {
-    if (typeof filter === 'function' && !callback) {
-      callback = filter as any
-      filter = undefined
-    }
-    if (callback) {
-      this.addHandler(new CallbackQueryHandler(callback, filter))
-    }
+  public onMessage(filter?: Filter | ((client: Client, message: Message) => any), callback?: (client: Client, message: Message) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new MessageHandler(cb, flt))
+  }
+
+  public onEditedMessage(filter?: Filter | ((client: Client, message: Message) => any), callback?: (client: Client, message: Message) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new EditedMessageHandler(cb, flt))
+  }
+
+  public onCallbackQuery(filter?: Filter | ((client: Client, query: any) => any), callback?: (client: Client, query: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new CallbackQueryHandler(cb, flt))
+  }
+
+  public onInlineQuery(filter?: Filter | ((client: Client, query: any) => any), callback?: (client: Client, query: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new InlineQueryHandler(cb, flt))
+  }
+
+  public onChosenInlineResult(filter?: Filter | ((client: Client, result: any) => any), callback?: (client: Client, result: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new ChosenInlineResultHandler(cb, flt))
+  }
+
+  public onChatMemberUpdated(filter?: Filter | ((client: Client, update: any) => any), callback?: (client: Client, update: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new ChatMemberUpdatedHandler(cb, flt))
+  }
+
+  public onChatJoinRequest(filter?: Filter | ((client: Client, request: any) => any), callback?: (client: Client, request: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new ChatJoinRequestHandler(cb, flt))
+  }
+
+  public onMessageReaction(filter?: Filter | ((client: Client, reaction: any) => any), callback?: (client: Client, reaction: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new MessageReactionHandler(cb, flt))
+  }
+
+  public onPoll(filter?: Filter | ((client: Client, poll: any) => any), callback?: (client: Client, poll: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new PollHandler(cb, flt))
+  }
+
+  public onStory(filter?: Filter | ((client: Client, story: any) => any), callback?: (client: Client, story: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new StoryHandler(cb, flt))
+  }
+
+  public onPreCheckoutQuery(filter?: Filter | ((client: Client, query: any) => any), callback?: (client: Client, query: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new PreCheckoutQueryHandler(cb, flt))
+  }
+
+  public onShippingQuery(filter?: Filter | ((client: Client, query: any) => any), callback?: (client: Client, query: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new ShippingQueryHandler(cb, flt))
+  }
+
+  public onUserStatus(filter?: Filter | ((client: Client, status: any) => any), callback?: (client: Client, status: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new UserStatusHandler(cb, flt))
+  }
+
+  public onDeletedMessages(filter?: Filter | ((client: Client, messages: any) => any), callback?: (client: Client, messages: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new DeletedMessagesHandler(cb, flt))
+  }
+
+  public onConnect(callback: (client: Client) => any): void {
+    this.addHandler(new ConnectHandler(callback))
+  }
+
+  public onDisconnect(callback: (client: Client) => any): void {
+    this.addHandler(new DisconnectHandler(callback))
+  }
+
+  public onRawUpdate(filter?: Filter | ((client: Client, update: any) => any), callback?: (client: Client, update: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new RawUpdateHandler(cb, flt))
+  }
+
+  public onError(filter?: Filter | ((client: Client, error: any) => any), callback?: (client: Client, error: any) => any): void {
+    const { cb, flt } = this._resolveHandlerArgs(filter, callback)
+    if (cb) this.addHandler(new ErrorHandler(cb, flt))
   }
 
   // API Methods

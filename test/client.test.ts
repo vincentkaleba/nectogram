@@ -185,17 +185,41 @@ describe('Client & API Methods Module (Step 8)', () => {
       expect(sessionStr.length).toBeGreaterThan(100)
     })
 
-    it('should register handlers with onMessage decorator', () => {
+    it('should register all 18 Pyrogram-style on* handler decorators', () => {
       const client = new Client({
         apiId: 123456,
         apiHash: 'hash123',
         inMemory: true,
+        botToken: '123456:ABC',
+        workers: 8,
+        noUpdates: false,
       })
 
-      const callback = vi.fn()
-      client.onMessage(Filters.text, callback)
+      expect(client.botToken).toBe('123456:ABC')
+      expect(client.workers).toBe(8)
 
-      expect(client.dispatcher.groups.get(0)?.length).toBe(1)
+      const cb = vi.fn()
+      client.onMessage(Filters.text, cb)
+      client.onEditedMessage(cb)
+      client.onCallbackQuery(cb)
+      client.onInlineQuery(cb)
+      client.onChosenInlineResult(cb)
+      client.onChatMemberUpdated(cb)
+      client.onChatJoinRequest(cb)
+      client.onMessageReaction(cb)
+      client.onPoll(cb)
+      client.onStory(cb)
+      client.onPreCheckoutQuery(cb)
+      client.onShippingQuery(cb)
+      client.onUserStatus(cb)
+      client.onDeletedMessages(cb)
+      client.onConnect(cb)
+      client.onDisconnect(cb)
+      client.onRawUpdate(cb)
+      client.onError(cb)
+
+      const handlersList = client.dispatcher.groups.get(0)
+      expect(handlersList?.length).toBe(18)
     })
   })
 })
