@@ -19,9 +19,13 @@ describe('Phase 1 Methods Test Suite', () => {
     expect(typeof client.createGroup).toBe('function')
     expect(typeof client.createSupergroup).toBe('function')
     expect(typeof client.answerInlineQuery).toBe('function')
+    expect(typeof client.createInvoiceLink).toBe('function')
+    expect(typeof client.sendInvoice).toBe('function')
     expect(typeof client.getCommonChats).toBe('function')
     expect(typeof client.getChatPhotos).toBe('function')
     expect(typeof client.saveFile).toBe('function')
+    expect(typeof client.setChatAccentColor).toBe('function')
+    expect(typeof client.setChatProfileAccentColor).toBe('function')
   })
 
   it('should support progress callback and progressArgs in saveFile', async () => {

@@ -104,3 +104,54 @@ export async function acceptTermsOfService(
 
   return true
 }
+
+export async function changePhoneNumber(
+  this: Client,
+  phoneNumber: string,
+  phoneCodeHash: string,
+  phoneCode: string
+): Promise<User> {
+  const res = await this.invoke(
+    new raw.functions.account.ChangePhone(
+      phoneNumber.replace(/\D/g, ''),
+      phoneCodeHash,
+      phoneCode
+    )
+  )
+
+  return User._parse(res as any)
+}
+
+export async function getActiveSessions(
+  this: Client
+): Promise<any> {
+  const res = await this.invoke(
+    new raw.functions.account.GetAuthorizations()
+  )
+
+  return res
+}
+
+export async function resetSession(
+  this: Client,
+  sessionHash: bigint
+): Promise<boolean> {
+  const res = await this.invoke(
+    new raw.functions.account.ResetAuthorization(sessionHash)
+  )
+
+  return Boolean(res)
+}
+
+export async function resetSessions(
+  this: Client
+): Promise<boolean> {
+  const res = await this.invoke(
+    new raw.functions.auth.ResetAuthorizations()
+  )
+
+  return Boolean(res)
+}
+
+export const sendPhoneNumberCode = sendCode
+export const resendPhoneNumberCode = resendCode

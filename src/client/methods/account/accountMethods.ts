@@ -84,3 +84,69 @@ export async function setPrivacy(
 
   return res
 }
+
+export async function getGlobalPrivacySettings(
+  this: Client
+): Promise<any> {
+  const res = await this.invoke(
+    new raw.functions.account.GetGlobalPrivacySettings()
+  )
+
+  return res
+}
+
+export async function setGlobalPrivacySettings(
+  this: Client,
+  settings: raw.base.GlobalPrivacySettings
+): Promise<any> {
+  const res = await this.invoke(
+    new raw.functions.account.SetGlobalPrivacySettings(settings)
+  )
+
+  return res
+}
+
+export async function setInactiveSessionTtl(
+  this: Client,
+  days: number
+): Promise<boolean> {
+  const res = await this.invoke(
+    new raw.functions.account.SetAuthorizationTTL(days)
+  )
+
+  return Boolean(res)
+}
+
+export async function addProfileAudio(
+  this: Client,
+  audio: raw.base.InputDocument
+): Promise<boolean> {
+  const res = await this.invoke(
+    new raw.functions.account.SaveMusic(audio)
+  )
+
+  return Boolean(res)
+}
+
+export async function removeProfileAudio(
+  this: Client,
+  audio: raw.base.InputDocument
+): Promise<boolean> {
+  const res = await this.invoke(
+    new raw.functions.account.SaveMusic(audio, true)
+  )
+
+  return Boolean(res)
+}
+
+export async function setProfileAudioPosition(
+  this: Client,
+  audio: raw.base.InputDocument,
+  afterAudio?: raw.base.InputDocument
+): Promise<boolean> {
+  const res = await this.invoke(
+    new raw.functions.account.SaveMusic(audio, undefined, afterAudio)
+  )
+
+  return Boolean(res)
+}

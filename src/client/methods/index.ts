@@ -7,9 +7,10 @@ export * from './auth/signInBot.js'
 export * from './auth/authMethods.js'
 
 export * from './account/accountMethods.js'
+export * from './password/passwordMethods.js'
+export * from './folders/folderMethods.js'
 
 export * from './invite_links/inviteLinkMethods.js'
-
 export * from './contacts/contactMethods.js'
 
 export * from './messages/sendMessage.js'
@@ -22,18 +23,30 @@ export * from './messages/sendMediaAdvanced.js'
 export * from './messages/getChatHistory.js'
 export * from './messages/sendReaction.js'
 export * from './messages/messageUtils.js'
+export * from './messages/messageExtended.js'
 
 export * from './chats/getChat.js'
 export * from './chats/getChatMembers.js'
 export * from './chats/chatAdmin.js'
 export * from './chats/chatDetails.js'
 export * from './chats/createChat.js'
+export * from './chats/chatManagement.js'
+export * from './chats/chatFolders.js'
+export * from './chats/chatForums.js'
 
 export * from './bots/answerCallbackQuery.js'
 export * from './bots/botUtils.js'
 export * from './bots/inlineQueries.js'
+export * from './bots/botAdvanced.js'
 
 export * from './users/userUtils.js'
 export * from './users/usersExtended.js'
 
 export * from './advanced/saveFile.js'
+export * from './advanced/advancedMethods.js'
+
+export * from './premium/premiumMethods.js'
+export * from './phone/phoneMethods.js'
+export * from './business/businessMethods.js'
+export * from './stories/storyMethods.js'
+export * from './payments/paymentMethods.js'

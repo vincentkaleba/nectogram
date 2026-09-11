@@ -96,18 +96,32 @@ import {
   getCommonChats,
   getChatPhotos,
   saveFile,
+  resolvePeer,
+  recoverGaps,
   sendCode,
   resendCode,
   signIn,
   signUp,
   logOut,
   acceptTermsOfService,
+  changePhoneNumber,
+  getActiveSessions,
+  resetSession,
+  resetSessions,
+  sendPhoneNumberCode,
+  resendPhoneNumberCode,
   updateProfile,
   setUsername,
   getAccountTtl,
   setAccountTtl,
   getPrivacy,
   setPrivacy,
+  getGlobalPrivacySettings,
+  setGlobalPrivacySettings,
+  setInactiveSessionTtl,
+  addProfileAudio,
+  removeProfileAudio,
+  setProfileAudioPosition,
   createChatInviteLink,
   editChatInviteLink,
   revokeChatInviteLink,
@@ -118,6 +132,129 @@ import {
   deleteContacts,
   getContacts,
   searchContacts,
+  // Phase 3 - Password, Folders, Premium, Phone
+  enableCloudPassword,
+  changeCloudPassword,
+  removeCloudPassword,
+  checkChatFolderInviteLink,
+  applyBoost,
+  getBoostsStatus,
+  getCallMembers,
+  // Phase 4 - Business, Stories, Payments
+  getBusinessConnection,
+  deleteBusinessMessages,
+  getBusinessAccountStarBalance,
+  getBusinessAccountGifts,
+  transferBusinessAccountStars,
+  sendStory,
+  getStories,
+  deleteStories,
+  getStarsBalance,
+  getAvailableGifts,
+  sendGift,
+  // Extended Chats
+  promoteChatMember,
+  restrictChatMember,
+  setChatPhoto,
+  deleteChatPhoto,
+  setChatPermissions,
+  setChatProtectedContent,
+  setSlowMode,
+  setAdministratorTitle,
+  setSendAsChat,
+  getSendAsChats,
+  setChatDiscussionGroup,
+  archiveChats,
+  unarchiveChats,
+  markChatUnread,
+  addChatMembers,
+  deleteUserHistory,
+  deleteChannel,
+  deleteSupergroup,
+  setChatUsername,
+  getChatOnlineCount,
+  getChatMembersCount,
+  toggleForumTopics,
+  toggleJoinToSend,
+  getDialogsCount,
+  getDialogs,
+  transferChatOwnership,
+  setChatMemberTag,
+  setChatTtl,
+  setChatAccentColor,
+  setChatProfileAccentColor,
+  // Extended Chat Folders
+  getFolders,
+  createFolder,
+  editFolder,
+  deleteFolder,
+  reorderFolders,
+  toggleFolderTags,
+  createFolderInviteLink,
+  deleteFolderInviteLink,
+  getFolderInviteLinks,
+  getChatsForFolderInviteLink,
+  joinFolder,
+  leaveFolder,
+  // Extended Chat Forums
+  createForumTopic,
+  editForumTopic,
+  closeForumTopic,
+  deleteForumTopic,
+  pinForumTopic,
+  unpinForumTopic,
+  getForumTopics,
+  getForumTopicsById,
+  getSimilarChannels,
+  getSuitableDiscussionChats,
+  getChatEventLog,
+  // Extended Messages
+  getMessages,
+  searchMessages,
+  searchGlobal,
+  readChatHistory,
+  readMentions,
+  readReactions,
+  deleteChatHistory,
+  searchMessagesCount,
+  sendScreenshotNotification,
+  votePoll,
+  stopPoll,
+  retractVote,
+  getAvailableEffects,
+  getStickers,
+  getCustomEmojiStickers,
+  viewMessages,
+  getScheduledMessages,
+  sendPaidReaction,
+  getDiscussionMessage,
+  getDiscussionReplies,
+  getMediaGroup,
+  startBot,
+  // Extended Bots
+  createInvoiceLink,
+  sendInvoice,
+  answerShippingQuery,
+  answerPreCheckoutQuery,
+  getBotInfoDescription,
+  setBotInfoDescription,
+  getBotInfoShortDescription,
+  setBotInfoShortDescription,
+  getBotName,
+  setBotName,
+  getBotDefaultPrivileges,
+  setBotDefaultPrivileges,
+  getChatMenuButton,
+  setChatMenuButton,
+  getGameHighScores,
+  setGameScore,
+  sendGame,
+  getInlineBotResults,
+  sendInlineBotResult,
+  checkBotUsername,
+  getOwnedBots,
+  refundStarPayment,
+  editUserStarSubscription,
 } from './methods/index.js'
 
 import { parseText, ParseMode } from '../parser/index.js'
@@ -380,7 +517,7 @@ export class Client {
     const res = await this.session.invoke<T>(query, retries)
     if (res && typeof res === 'object') {
       if ('users' in res || 'chats' in res) {
-        this._savePeersFromUpdate((res as any).users, (res as any).chats).catch(() => {})
+        this._savePeersFromUpdate((res as any).users, (res as any).chats).catch(() => { })
       }
     }
     return res
@@ -610,4 +747,166 @@ export class Client {
   public deleteContacts = deleteContacts.bind(this)
   public getContacts = getContacts.bind(this)
   public searchContacts = searchContacts.bind(this)
+
+  // Phase 3 - Password / 2FA
+  public enableCloudPassword = enableCloudPassword.bind(this)
+  public changeCloudPassword = changeCloudPassword.bind(this)
+  public removeCloudPassword = removeCloudPassword.bind(this)
+
+  // Phase 3 - Folders (check invite link)
+  public checkChatFolderInviteLink = checkChatFolderInviteLink.bind(this)
+
+  // Phase 3 - Premium
+  public applyBoost = applyBoost.bind(this)
+  public getBoostsStatus = getBoostsStatus.bind(this)
+
+  // Phase 3 - Phone / Group Calls
+  public getCallMembers = getCallMembers.bind(this)
+
+  // Phase 4 - Business
+  public getBusinessConnection = getBusinessConnection.bind(this)
+
+  // Phase 4 - Stories
+  public sendStory = sendStory.bind(this)
+  public getStories = getStories.bind(this)
+  public deleteStories = deleteStories.bind(this)
+
+  // Phase 4 - Payments
+  public getStarsBalance = getStarsBalance.bind(this)
+  public getAvailableGifts = getAvailableGifts.bind(this)
+  public sendGift = sendGift.bind(this)
+
+  // Extended Chat Management
+  public promoteChatMember = promoteChatMember.bind(this)
+  public restrictChatMember = restrictChatMember.bind(this)
+  public setChatPhoto = setChatPhoto.bind(this)
+  public deleteChatPhoto = deleteChatPhoto.bind(this)
+  public setChatPermissions = setChatPermissions.bind(this)
+  public setChatProtectedContent = setChatProtectedContent.bind(this)
+  public setSlowMode = setSlowMode.bind(this)
+  public setAdministratorTitle = setAdministratorTitle.bind(this)
+  public setSendAsChat = setSendAsChat.bind(this)
+  public getSendAsChats = getSendAsChats.bind(this)
+  public setChatDiscussionGroup = setChatDiscussionGroup.bind(this)
+  public archiveChats = archiveChats.bind(this)
+  public unarchiveChats = unarchiveChats.bind(this)
+  public markChatUnread = markChatUnread.bind(this)
+  public addChatMembers = addChatMembers.bind(this)
+  public deleteUserHistory = deleteUserHistory.bind(this)
+  public deleteChannel = deleteChannel.bind(this)
+  public deleteSupergroup = deleteSupergroup.bind(this)
+  public setChatUsername = setChatUsername.bind(this)
+  public getChatOnlineCount = getChatOnlineCount.bind(this)
+  public getChatMembersCount = getChatMembersCount.bind(this)
+  public toggleForumTopics = toggleForumTopics.bind(this)
+  public toggleJoinToSend = toggleJoinToSend.bind(this)
+  public getDialogsCount = getDialogsCount.bind(this)
+  public getDialogs = getDialogs.bind(this)
+  public transferChatOwnership = transferChatOwnership.bind(this)
+  public setChatMemberTag = setChatMemberTag.bind(this)
+  public setChatTtl = setChatTtl.bind(this)
+  public setChatAccentColor = setChatAccentColor.bind(this)
+  public setChatProfileAccentColor = setChatProfileAccentColor.bind(this)
+
+  // Extended Chat Folders
+  public getFolders = getFolders.bind(this)
+  public createFolder = createFolder.bind(this)
+  public editFolder = editFolder.bind(this)
+  public deleteFolder = deleteFolder.bind(this)
+  public reorderFolders = reorderFolders.bind(this)
+  public toggleFolderTags = toggleFolderTags.bind(this)
+  public createFolderInviteLink = createFolderInviteLink.bind(this)
+  public deleteFolderInviteLink = deleteFolderInviteLink.bind(this)
+  public getFolderInviteLinks = getFolderInviteLinks.bind(this)
+  public getChatsForFolderInviteLink = getChatsForFolderInviteLink.bind(this)
+  public joinFolder = joinFolder.bind(this)
+  public leaveFolder = leaveFolder.bind(this)
+
+  // Extended Forum Topics
+  public createForumTopic = createForumTopic.bind(this)
+  public editForumTopic = editForumTopic.bind(this)
+  public closeForumTopic = closeForumTopic.bind(this)
+  public deleteForumTopic = deleteForumTopic.bind(this)
+  public pinForumTopic = pinForumTopic.bind(this)
+  public unpinForumTopic = unpinForumTopic.bind(this)
+  public getForumTopics = getForumTopics.bind(this)
+  public getForumTopicsById = getForumTopicsById.bind(this)
+  public getSimilarChannels = getSimilarChannels.bind(this)
+  public getSuitableDiscussionChats = getSuitableDiscussionChats.bind(this)
+  public getChatEventLog = getChatEventLog.bind(this)
+
+  // Extended Messages
+  public getMessages = getMessages.bind(this)
+  public searchMessages = searchMessages.bind(this)
+  public searchGlobal = searchGlobal.bind(this)
+  public readChatHistory = readChatHistory.bind(this)
+  public readMentions = readMentions.bind(this)
+  public readReactions = readReactions.bind(this)
+  public deleteChatHistory = deleteChatHistory.bind(this)
+  public searchMessagesCount = searchMessagesCount.bind(this)
+  public sendScreenshotNotification = sendScreenshotNotification.bind(this)
+  public votePoll = votePoll.bind(this)
+  public stopPoll = stopPoll.bind(this)
+  public retractVote = retractVote.bind(this)
+  public getAvailableEffects = getAvailableEffects.bind(this)
+  public getStickers = getStickers.bind(this)
+  public getCustomEmojiStickers = getCustomEmojiStickers.bind(this)
+  public viewMessages = viewMessages.bind(this)
+  public getScheduledMessages = getScheduledMessages.bind(this)
+  public sendPaidReaction = sendPaidReaction.bind(this)
+  public getDiscussionMessage = getDiscussionMessage.bind(this)
+  public getDiscussionReplies = getDiscussionReplies.bind(this)
+  public getMediaGroup = getMediaGroup.bind(this)
+  public startBot = startBot.bind(this)
+
+  // Extended Bots
+  public createInvoiceLink = createInvoiceLink.bind(this)
+  public sendInvoice = sendInvoice.bind(this)
+  public answerShippingQuery = answerShippingQuery.bind(this)
+  public answerPreCheckoutQuery = answerPreCheckoutQuery.bind(this)
+  public getBotInfoDescription = getBotInfoDescription.bind(this)
+  public setBotInfoDescription = setBotInfoDescription.bind(this)
+  public getBotInfoShortDescription = getBotInfoShortDescription.bind(this)
+  public setBotInfoShortDescription = setBotInfoShortDescription.bind(this)
+  public getBotName = getBotName.bind(this)
+  public setBotName = setBotName.bind(this)
+  public getBotDefaultPrivileges = getBotDefaultPrivileges.bind(this)
+  public setBotDefaultPrivileges = setBotDefaultPrivileges.bind(this)
+  public getChatMenuButton = getChatMenuButton.bind(this)
+  public setChatMenuButton = setChatMenuButton.bind(this)
+  public getGameHighScores = getGameHighScores.bind(this)
+  public setGameScore = setGameScore.bind(this)
+  public sendGame = sendGame.bind(this)
+  public getInlineBotResults = getInlineBotResults.bind(this)
+  public sendInlineBotResult = sendInlineBotResult.bind(this)
+  public checkBotUsername = checkBotUsername.bind(this)
+  public getOwnedBots = getOwnedBots.bind(this)
+  public refundStarPayment = refundStarPayment.bind(this)
+  public editUserStarSubscription = editUserStarSubscription.bind(this)
+
+  // Account
+  public getGlobalPrivacySettings = getGlobalPrivacySettings.bind(this)
+  public setGlobalPrivacySettings = setGlobalPrivacySettings.bind(this)
+  public setInactiveSessionTtl = setInactiveSessionTtl.bind(this)
+  public addProfileAudio = addProfileAudio.bind(this)
+  public removeProfileAudio = removeProfileAudio.bind(this)
+  public setProfileAudioPosition = setProfileAudioPosition.bind(this)
+
+  // Advanced
+  public resolvePeer = resolvePeer.bind(this)
+  public recoverGaps = recoverGaps.bind(this)
+
+  // Auth
+  public changePhoneNumber = changePhoneNumber.bind(this)
+  public getActiveSessions = getActiveSessions.bind(this)
+  public resetSession = resetSession.bind(this)
+  public resetSessions = resetSessions.bind(this)
+  public sendPhoneNumberCode = sendPhoneNumberCode.bind(this)
+  public resendPhoneNumberCode = resendPhoneNumberCode.bind(this)
+
+  // Business
+  public deleteBusinessMessages = deleteBusinessMessages.bind(this)
+  public getBusinessAccountStarBalance = getBusinessAccountStarBalance.bind(this)
+  public getBusinessAccountGifts = getBusinessAccountGifts.bind(this)
+  public transferBusinessAccountStars = transferBusinessAccountStars.bind(this)
 }
