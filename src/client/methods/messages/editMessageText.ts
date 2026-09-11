@@ -26,6 +26,7 @@ export interface EditMessageOptions {
   replyMarkup?: InlineKeyboardMarkup
   parseMode?: ParseMode
   entities?: raw.base.MessageEntity[]
+  richMessage?: raw.base.InputRichMessage
 }
 
 export async function editMessageText(
@@ -62,7 +63,11 @@ export async function editMessageText(
       cleanText,
       undefined,
       replyMarkup,
-      entities
+      entities,
+      undefined,
+      undefined,
+      undefined,
+      options?.richMessage
     )
   )
 

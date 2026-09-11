@@ -81,7 +81,7 @@ export class Client {
     this.apiId = options.apiId
     this.apiHash = options.apiHash
     this.testMode = options.testMode ?? false
-    this.parseMode = options.parseMode ?? 'markdown'
+    this.parseMode = options.parseMode ?? ParseMode.MARKDOWN
     this.appVersion = options.appVersion ?? '1.0.0'
     this.deviceModel = options.deviceModel ?? 'Node.js'
     this.systemVersion = options.systemVersion ?? process.version

@@ -24,7 +24,7 @@ export interface ParsedText {
 }
 
 export interface EntitySpan {
-  type: 'bold' | 'italic' | 'code' | 'pre' | 'text_url' | 'spoiler' | 'strike' | 'underline' | 'blockquote'
+  type: 'bold' | 'italic' | 'code' | 'pre' | 'text_url' | 'spoiler' | 'strike' | 'underline' | 'blockquote' | 'custom_emoji'
   start: number
   end: number
   param?: string
@@ -75,7 +75,24 @@ export function parseMarkdown(input: string): ParsedText {
         }
       }
 
-      // 3. Text Link [text](url)
+      // 3. Custom Emoji ![text](custom_emoji_id) or ![emoji](emoji:12345)
+      if (str[i] === '!' && str[i + 1] === '[') {
+        const closeBracket = str.indexOf(']', i + 2)
+        if (closeBracket !== -1 && str[closeBracket + 1] === '(') {
+          const closeParen = str.indexOf(')', closeBracket + 2)
+          if (closeParen !== -1) {
+            const emojiText = str.substring(i + 2, closeBracket)
+            const rawId = str.substring(closeBracket + 2, closeParen).replace(/^(emoji:|custom:)/, '')
+            const start = output.length
+            output += emojiText
+            localSpans.push({ type: 'custom_emoji', start, end: output.length, param: rawId })
+            i = closeParen + 1
+            continue
+          }
+        }
+      }
+
+      // 4. Text Link [text](url)
       if (str[i] === '[') {
         const closeBracket = str.indexOf(']', i + 1)
         if (closeBracket !== -1 && str[closeBracket + 1] === '(') {
@@ -96,7 +113,7 @@ export function parseMarkdown(input: string): ParsedText {
         }
       }
 
-      // 4. Bold **text**
+      // 5. Bold **text**
       if (str.startsWith('**', i)) {
         const endIdx = str.indexOf('**', i + 2)
         if (endIdx !== -1) {
@@ -113,7 +130,7 @@ export function parseMarkdown(input: string): ParsedText {
         }
       }
 
-      // 5. Italic __text__ or _text_
+      // 6. Italic __text__ or _text_
       if (str.startsWith('__', i)) {
         const endIdx = str.indexOf('__', i + 2)
         if (endIdx !== -1) {
@@ -144,7 +161,7 @@ export function parseMarkdown(input: string): ParsedText {
         }
       }
 
-      // 6. Spoiler ||text||
+      // 7. Spoiler ||text||
       if (str.startsWith('||', i)) {
         const endIdx = str.indexOf('||', i + 2)
         if (endIdx !== -1) {
@@ -161,7 +178,7 @@ export function parseMarkdown(input: string): ParsedText {
         }
       }
 
-      // 7. Strikethrough ~~text~~
+      // 8. Strikethrough ~~text~~
       if (str.startsWith('~~', i)) {
         const endIdx = str.indexOf('~~', i + 2)
         if (endIdx !== -1) {
@@ -178,7 +195,7 @@ export function parseMarkdown(input: string): ParsedText {
         }
       }
 
-      // 8. Underline --text--
+      // 9. Underline --text--
       if (str.startsWith('--', i)) {
         const endIdx = str.indexOf('--', i + 2)
         if (endIdx !== -1) {
@@ -238,6 +255,9 @@ export function parseMarkdown(input: string): ParsedText {
         break
       case 'blockquote':
         entities.push(new raw.types.MessageEntityBlockquote(offset, length))
+        break
+      case 'custom_emoji':
+        entities.push(new raw.types.MessageEntityCustomEmoji(offset, length, BigInt(span.param || '0')))
         break
     }
   }

@@ -27,6 +27,7 @@ export interface SendMessageOptions {
   replyMarkup?: InlineKeyboardMarkup
   parseMode?: ParseMode
   entities?: raw.base.MessageEntity[]
+  richMessage?: raw.base.InputRichMessage
 }
 
 export async function sendMessage(
@@ -68,7 +69,9 @@ export async function sendMessage(
       undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       replyTo,
       replyMarkup,
-      entities
+      entities,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      options?.richMessage
     )
   )
 

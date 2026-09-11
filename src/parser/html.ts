@@ -55,6 +55,7 @@ export function parseHTML(html: string): ParsedText {
                 else if (tagName === 'u') type = 'underline'
                 else if (tagName === 'tg-spoiler') type = 'spoiler'
                 else if (tagName === 'blockquote') type = 'blockquote'
+                else if (tagName === 'tg-emoji') type = 'custom_emoji'
 
                 if (type) {
                   spans.push({ type, start, end, param: open.param })
@@ -74,6 +75,9 @@ export function parseHTML(html: string): ParsedText {
           } else if (tagName === 'code') {
             const classMatch = tagContent.match(/class=["']language-([^"']+)["']/)
             if (classMatch) param = classMatch[1]
+          } else if (tagName === 'tg-emoji') {
+            const emojiIdMatch = tagContent.match(/(?:emoji-id|id)=["']([^"']+)["']/)
+            if (emojiIdMatch) param = emojiIdMatch[1]
           }
 
           stack.push({ tag: tagName, start: output.length, param })
@@ -126,6 +130,9 @@ export function parseHTML(html: string): ParsedText {
         break
       case 'blockquote':
         entities.push(new raw.types.MessageEntityBlockquote(offset, length))
+        break
+      case 'custom_emoji':
+        entities.push(new raw.types.MessageEntityCustomEmoji(offset, length, BigInt(span.param || '0')))
         break
     }
   }

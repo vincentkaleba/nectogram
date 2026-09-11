@@ -17,8 +17,9 @@
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
 import * as raw from '../../raw/index.js'
+import { ChatType as ChatTypeEnum } from '../../enums/index.js'
 
-export type ChatType = 'private' | 'group' | 'supergroup' | 'channel'
+export type ChatType = 'private' | 'group' | 'supergroup' | 'channel' | ChatTypeEnum
 
 export interface ChatOptions {
   id: bigint

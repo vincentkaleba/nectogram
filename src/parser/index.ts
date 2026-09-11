@@ -18,18 +18,18 @@
 
 import { parseMarkdown, ParsedText } from './markdown.js'
 import { parseHTML } from './html.js'
+import { ParseMode } from '../enums/index.js'
 
-export type ParseMode = 'markdown' | 'html' | 'raw' | undefined
-
+export { ParseMode }
 export * from './markdown.js'
 export * from './html.js'
 
 /**
  * Parse text according to specified ParseMode (markdown, html, or raw).
  */
-export function parseText(text: string, parseMode?: ParseMode): ParsedText {
+export function parseText(text: string, parseMode?: ParseMode | string): ParsedText {
   if (!text) return { text: '', entities: [] }
-  if (parseMode === 'raw') return { text, entities: [] }
-  if (parseMode === 'html') return parseHTML(text)
+  if (parseMode === 'raw' || parseMode === ParseMode.RAW) return { text, entities: [] }
+  if (parseMode === 'html' || parseMode === ParseMode.HTML) return parseHTML(text)
   return parseMarkdown(text)
 }
