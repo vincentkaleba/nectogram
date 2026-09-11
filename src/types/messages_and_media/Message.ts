@@ -69,15 +69,29 @@ export class Message {
       fromUserId = BigInt(fromId.user_id ?? fromId.userId)
     }
 
+    const peerId = rawMsg.peer_id || rawMsg.peerId
+    const peerQual = peerId?.QUALNAME || peerId?.constructor?.name
+    if (!fromUserId && peerId && (peerId instanceof raw.types.PeerUser || peerQual === 'types.PeerUser') && !rawMsg.out) {
+      fromUserId = BigInt(peerId.user_id ?? peerId.userId)
+    }
+
     let fromUser: User | undefined
     if (fromUserId) {
-      const u = usersMap?.get(fromUserId)
+      let u = usersMap?.get(fromUserId)
+      if (!u && usersMap) {
+        for (const [k, v] of usersMap.entries()) {
+          try {
+            if (BigInt(k) === fromUserId) {
+              u = v
+              break
+            }
+          } catch {}
+        }
+      }
       fromUser = u ? (u instanceof User ? u : User._parse(u as any)) : new User({ id: fromUserId, isBot: false })
     }
 
     let chat: Chat
-    const peerId = rawMsg.peer_id || rawMsg.peerId
-    const peerQual = peerId?.QUALNAME || peerId?.constructor?.name
     if (peerId && (peerId instanceof raw.types.PeerUser || peerQual === 'types.PeerUser')) {
       const peerUserId = BigInt(peerId.user_id ?? peerId.userId)
       const chatId = (!rawMsg.out && fromUserId) ? fromUserId : peerUserId

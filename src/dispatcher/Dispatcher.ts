@@ -70,7 +70,6 @@ export class Dispatcher {
    * Feed an incoming raw update with user and chat dictionaries into the dispatch queue.
    */
   public feedUpdate(update: any, users: Map<bigint, any> = new Map(), chats: Map<bigint, any> = new Map()): void {
-    console.log(`⚡ [Dispatcher] Received update: ${update?.QUALNAME ?? update?.constructor?.name}`)
     if (this._stopped) return
     this._updatesQueue.push([update, users, chats])
     setImmediate(() => {
@@ -245,7 +244,6 @@ export class Dispatcher {
       }
 
       const { parsedUpdate, handlerClass } = this.parseUpdate(update, users, chats)
-      console.log(`🔍 [Dispatcher] parseUpdate result: handlerClass=${handlerClass?.name ?? 'null'}, parsedUpdate=${parsedUpdate ? parsedUpdate.constructor?.name : 'null'}, groups=${this.groups.size}`)
 
       for (const groupHandlers of this.groups.values()) {
         for (const handler of groupHandlers) {
@@ -253,23 +251,17 @@ export class Dispatcher {
             continue
           }
 
-          console.log(`  🔸 Checking handler: ${handler.constructor.name} vs handlerClass: ${handlerClass?.name ?? 'null'}`)
-
           let matched = false
           let checkResult = false
 
           try {
             if (handlerClass && (handler instanceof handlerClass || handler.constructor?.name === handlerClass.name) && parsedUpdate) {
               checkResult = await handler.check(this.client, parsedUpdate)
-              console.log(`  🔸 Filter check result: ${checkResult}`)
               if (checkResult) {
                 matched = true
                 try {
-                  console.log(`  🚀 Executing callback for ${handler.constructor.name}...`)
                   await handler.callback(this.client, parsedUpdate)
-                  console.log(`  ✅ Callback execution completed for ${handler.constructor.name}`)
                 } catch (err: any) {
-                  console.error(`  ❌ Exception in callback execution:`, err)
                   if (err instanceof StopPropagation) {
                     throw err
                   } else if (err instanceof ContinuePropagation) {

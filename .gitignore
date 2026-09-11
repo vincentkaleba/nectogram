@@ -21,6 +21,10 @@ planning/
 # Sessions & Local Environment
 *.session
 *.session-journal
+*.session-shm
+*.session-wal
+*.log
+
 .env
 .env.*
 

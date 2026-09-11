@@ -70,7 +70,7 @@ export class User {
   }
 
   public get displayName(): string {
-    return this.fullName ?? `User ${this.id}`
+    return this.fullName ?? (this.username ? `@${this.username}` : `User ${this.id}`)
   }
 
   /**
@@ -83,19 +83,23 @@ export class User {
   /**
    * Parse a raw TL User object into a high-level User instance.
    */
-  public static _parse(rawUser: raw.types.User): User {
+  public static _parse(rawUser: raw.types.User | any): User {
+    if (rawUser instanceof User) {
+      return rawUser
+    }
+    const rawObj = rawUser?.raw || rawUser
     return new User({
-      id: rawUser.id,
-      isSelf: rawUser.isSelf ?? false,
-      isBot: rawUser.bot ?? false,
-      isDeleted: rawUser.deleted ?? false,
-      firstName: rawUser.first_name,
-      lastName: rawUser.last_name,
-      username: rawUser.username ?? (rawUser.usernames && rawUser.usernames.length > 0 ? rawUser.usernames[0].username : undefined),
-      phone: rawUser.phone,
-      languageCode: rawUser.lang_code,
-      dcId: rawUser.photo && 'dc_id' in rawUser.photo ? (rawUser.photo as any).dc_id : undefined,
-      raw: rawUser,
+      id: BigInt(rawObj.id ?? 0),
+      isSelf: rawObj.isSelf ?? rawObj.is_self ?? false,
+      isBot: rawObj.bot ?? rawObj.isBot ?? rawObj.is_bot ?? false,
+      isDeleted: rawObj.deleted ?? rawObj.isDeleted ?? rawObj.is_deleted ?? false,
+      firstName: rawObj.first_name ?? rawObj.firstName,
+      lastName: rawObj.last_name ?? rawObj.lastName,
+      username: rawObj.username ?? (rawObj.usernames && rawObj.usernames.length > 0 ? rawObj.usernames[0].username : undefined),
+      phone: rawObj.phone,
+      languageCode: rawObj.lang_code ?? rawObj.langCode ?? rawObj.languageCode,
+      dcId: rawObj.photo && 'dc_id' in rawObj.photo ? (rawObj.photo as any).dc_id : (rawObj.dcId ?? undefined),
+      raw: rawObj,
     })
   }
 }
