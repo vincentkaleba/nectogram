@@ -75,6 +75,7 @@ export class Client {
 
   public me?: User
   public isConnected: boolean = false
+  public readonly usersCache: Map<bigint, User> = new Map()
 
   constructor(options: ClientOptions) {
     this.name = options.name ?? 'nectogram'
@@ -255,7 +256,14 @@ export class Client {
             type: 'user',
             username: u.username,
             phone: u.phone,
+            firstName: u.first_name ?? u.firstName,
+            lastName: u.last_name ?? u.lastName,
           })
+          if (u instanceof raw.types.User) {
+            this.usersCache.set(userId, User._parse(u))
+          } else if (u instanceof User) {
+            this.usersCache.set(userId, u)
+          }
         }
       }
     }

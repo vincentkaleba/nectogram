@@ -25,6 +25,8 @@ export interface PeerInfo {
   username?: string
   phone?: string
   title?: string
+  firstName?: string
+  lastName?: string
 }
 
 /**

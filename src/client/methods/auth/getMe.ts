@@ -30,6 +30,7 @@ export async function getMe(this: Client): Promise<User> {
     if (rawUser instanceof raw.types.User) {
       const user = User._parse(rawUser)
       this.me = user
+      this.usersCache.set(user.id, user)
       await this.storage.setUserId(user.id)
       await this.storage.setIsBot(user.isBot ?? false)
       await this.storage.updatePeer({
@@ -38,6 +39,8 @@ export async function getMe(this: Client): Promise<User> {
         type: 'user',
         username: user.username,
         phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName,
       })
       return user
     }

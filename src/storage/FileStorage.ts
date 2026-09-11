@@ -69,6 +69,9 @@ export class FileStorage extends Storage {
             type: p.type,
             username: p.username,
             phone: p.phone,
+            title: p.title,
+            firstName: p.firstName,
+            lastName: p.lastName,
           }
           this._peersById.set(peer.id, peer)
         }
@@ -106,6 +109,9 @@ export class FileStorage extends Storage {
         type: p.type,
         username: p.username,
         phone: p.phone,
+        title: p.title,
+        firstName: p.firstName,
+        lastName: p.lastName,
       }))
 
       const json = {

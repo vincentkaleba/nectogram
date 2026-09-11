@@ -17,7 +17,7 @@
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
 import * as raw from '../raw/index.js'
-import { Message, CallbackQuery } from '../types/index.js'
+import { Message, CallbackQuery, User } from '../types/index.js'
 import { Handler, MessageHandler, CallbackQueryHandler, RawUpdateHandler, ErrorHandler } from './handlers/index.js'
 import { StopPropagation, ContinuePropagation } from './errors.js'
 
@@ -123,6 +123,92 @@ export class Dispatcher {
    * Core update router matching raw updates to high-level types, evaluating filters, and executing callbacks.
    */
   public async handleUpdate(update: any, users: Map<bigint, any>, chats: Map<bigint, any>): Promise<void> {
+    // 1. Merge client usersCache into users Map
+    if (this.client?.usersCache) {
+      for (const [uId, uObj] of this.client.usersCache.entries()) {
+        if (!users.has(uId)) {
+          users.set(uId, uObj)
+        }
+      }
+    }
+
+    // 2. Identify sender userId if update is a message or callback
+    let targetUserId: bigint | undefined
+    if (update instanceof raw.types.UpdateShortMessage) {
+      targetUserId = BigInt(update.user_id)
+    } else if (update instanceof raw.types.UpdateShortChatMessage) {
+      targetUserId = BigInt(update.from_id)
+    } else if (
+      update instanceof raw.types.UpdateNewMessage ||
+      update instanceof raw.types.UpdateNewChannelMessage ||
+      update instanceof raw.types.UpdateNewScheduledMessage ||
+      update instanceof raw.types.UpdateEditMessage ||
+      update instanceof raw.types.UpdateEditChannelMessage
+    ) {
+      if (update.message && update.message instanceof raw.types.Message && update.message.from_id instanceof raw.types.PeerUser) {
+        targetUserId = BigInt(update.message.from_id.user_id)
+      }
+    } else if (update instanceof raw.types.UpdateBotCallbackQuery || update instanceof raw.types.UpdateInlineBotCallbackQuery) {
+      targetUserId = BigInt(update.user_id)
+    }
+
+    // 3. Resolve user details from storage or Telegram API if missing
+    if (targetUserId) {
+      const existing = users.get(targetUserId)
+      const hasDetails = existing && (existing.firstName || existing.first_name || existing.username)
+      if (!hasDetails) {
+        if (this.client?.storage) {
+          try {
+            const peer = await this.client.storage.getPeerById(targetUserId)
+            if (peer && (peer.firstName || peer.username)) {
+              const u = new User({
+                id: targetUserId,
+                firstName: peer.firstName,
+                lastName: peer.lastName,
+                username: peer.username,
+                phone: peer.phone,
+              })
+              users.set(targetUserId, u)
+              this.client.usersCache?.set(targetUserId, u)
+            }
+          } catch {}
+        }
+
+        const stillMissing = !users.has(targetUserId) || !(users.get(targetUserId)?.firstName || users.get(targetUserId)?.first_name || users.get(targetUserId)?.username)
+        if (stillMissing && this.client?.session) {
+          try {
+            let accessHash = 0n
+            if (this.client?.storage) {
+              const p = await this.client.storage.getPeerById(targetUserId)
+              if (p) accessHash = p.accessHash
+            }
+            const fetched = await this.client.invoke(
+              new raw.functions.users.GetUsers([
+                new raw.types.InputUser(targetUserId, accessHash)
+              ])
+            )
+            if (Array.isArray(fetched) && fetched.length > 0) {
+              const rawU = fetched[0]
+              if (rawU instanceof raw.types.User) {
+                const parsedU = User._parse(rawU)
+                users.set(targetUserId, parsedU)
+                this.client.usersCache?.set(targetUserId, parsedU)
+                await this.client.storage?.updatePeer({
+                  id: targetUserId,
+                  accessHash: rawU.access_hash ?? 0n,
+                  type: 'user',
+                  username: rawU.username,
+                  phone: rawU.phone,
+                  firstName: rawU.first_name,
+                  lastName: rawU.last_name,
+                })
+              }
+            }
+          } catch {}
+        }
+      }
+    }
+
     const { parsedUpdate, handlerClass } = this.parseUpdate(update, users, chats)
 
     try {
