@@ -79,6 +79,22 @@ import {
   getUsers,
   blockUser,
   unblockUser,
+  sendPhoto,
+  sendVideo,
+  sendDocument,
+  sendAudio,
+  sendVoice,
+  getChatHistory,
+  getChatHistoryCount,
+  sendReaction,
+  setChatDescription,
+  createChannel,
+  createGroup,
+  createSupergroup,
+  answerInlineQuery,
+  getCommonChats,
+  getChatPhotos,
+  saveFile,
 } from './methods/index.js'
 
 import { parseText, ParseMode } from '../parser/index.js'
@@ -532,4 +548,20 @@ export class Client {
   public getUsers = getUsers.bind(this)
   public blockUser = blockUser.bind(this)
   public unblockUser = unblockUser.bind(this)
+  public sendPhoto = sendPhoto.bind(this)
+  public sendVideo = sendVideo.bind(this)
+  public sendDocument = sendDocument.bind(this)
+  public sendAudio = sendAudio.bind(this)
+  public sendVoice = sendVoice.bind(this)
+  public getChatHistory = getChatHistory.bind(this)
+  public getChatHistoryCount = getChatHistoryCount.bind(this)
+  public sendReaction = sendReaction.bind(this)
+  public setChatDescription = setChatDescription.bind(this)
+  public createChannel = createChannel.bind(this)
+  public createGroup = createGroup.bind(this)
+  public createSupergroup = createSupergroup.bind(this)
+  public answerInlineQuery = answerInlineQuery.bind(this)
+  public getCommonChats = getCommonChats.bind(this)
+  public getChatPhotos = getChatPhotos.bind(this)
+  public saveFile = saveFile.bind(this)
 }

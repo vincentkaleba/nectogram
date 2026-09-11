@@ -1,33 +1,32 @@
 //  Nectogram - Telegram MTProto API Client Library for Node.js
 //  Copyright (C) 2024-present Nectogram contributors
-//
-//  This file is part of Nectogram.
-//
-//  Nectogram is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU Lesser General Public License as published
-//  by the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
-//
-//  Nectogram is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU Lesser General Public License for more details.
-//
-//  You should have received a copy of the GNU Lesser General Public License
-//  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
+//  LGPL-3.0-or-later
 
 export * from './auth/getMe.js'
 export * from './auth/signInBot.js'
+
 export * from './messages/sendMessage.js'
 export * from './messages/editMessageText.js'
 export * from './messages/deleteMessages.js'
 export * from './messages/forwardMessages.js'
 export * from './messages/sendChatAction.js'
 export * from './messages/sendMedia.js'
+export * from './messages/sendMediaAdvanced.js'
+export * from './messages/getChatHistory.js'
+export * from './messages/sendReaction.js'
 export * from './messages/messageUtils.js'
+
 export * from './chats/getChat.js'
 export * from './chats/getChatMembers.js'
 export * from './chats/chatAdmin.js'
+export * from './chats/chatDetails.js'
+export * from './chats/createChat.js'
+
 export * from './bots/answerCallbackQuery.js'
 export * from './bots/botUtils.js'
+export * from './bots/inlineQueries.js'
+
 export * from './users/userUtils.js'
+export * from './users/usersExtended.js'
+
+export * from './advanced/saveFile.js'
