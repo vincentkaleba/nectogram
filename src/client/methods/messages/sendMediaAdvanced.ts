@@ -122,7 +122,7 @@ export async function sendPhoto(
     )
   )
 
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
 }
 
 export async function sendVideo(
@@ -205,7 +205,7 @@ export async function sendVideo(
     )
   )
 
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
 }
 
 export async function sendDocument(
@@ -272,7 +272,7 @@ export async function sendDocument(
     )
   )
 
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
 }
 
 export async function sendAnimation(
@@ -337,14 +337,21 @@ export async function sendAnimation(
     )
   )
 
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
+}
+
+export interface AudioMediaOptions extends BaseMediaOptions {
+  duration?: number
+  title?: string
+  performer?: string
+  fileName?: string
 }
 
 export async function sendAudio(
   this: Client,
   chatId: PeerLike,
   audio: string | Buffer,
-  options?: BaseMediaOptions & { duration?: number; title?: string; performer?: string }
+  options?: AudioMediaOptions
 ): Promise<Message> {
   const peer = await this.peerResolver.resolvePeer(chatId)
   const randomId = BigInt(Math.floor(Math.random() * 1e12))
@@ -363,6 +370,9 @@ export async function sendAudio(
       options?.performer
     )
   ]
+  if (options?.fileName) {
+    attributes.push(new raw.types.DocumentAttributeFilename(options.fileName))
+  }
   const inputMedia = new raw.types.InputMediaUploadedDocument(
     uploadedFile,
     'audio/mpeg',
@@ -394,7 +404,7 @@ export async function sendAudio(
     )
   )
 
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
 }
 
 export async function sendVoice(
@@ -443,5 +453,5 @@ export async function sendVoice(
     )
   )
 
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
 }

@@ -26,7 +26,7 @@ export async function sendLocation(
       randomId
     )
   )
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
 }
 
 export async function sendContact(
@@ -48,7 +48,7 @@ export async function sendContact(
       randomId
     )
   )
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
 }
 
 export async function sendDice(
@@ -68,7 +68,7 @@ export async function sendDice(
       randomId
     )
   )
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
 }
 
 export async function sendPoll(
@@ -111,5 +111,5 @@ export async function sendPoll(
       randomId
     )
   )
-  return Message._parse(res as any)
+  return Message._parse(res as any, undefined, undefined, this)
 }

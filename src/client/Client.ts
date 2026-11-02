@@ -16,6 +16,10 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
+import { readdirSync, statSync, existsSync } from 'node:fs'
+import { resolve, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+
 import * as raw from '../raw/index.js'
 import { Storage, MemoryStorage, FileStorage, SQLiteStorage } from '../storage/index.js'
 import { Connection } from '../connection/Connection.js'
@@ -50,6 +54,8 @@ import {
 import { Filter } from '../filters.js'
 import { User, Message } from '../types/index.js'
 import { PeerResolver } from './PeerResolver.js'
+import { Logger, LogLevel, LogLevelInput } from '../logger/index.js'
+
 
 import {
   getMe,
@@ -115,6 +121,8 @@ import {
   setPersonalChannel,
   getDefaultEmojiStatuses,
   saveFile,
+  uploadFile,
+  downloadMedia,
   resolvePeer,
   recoverGaps,
   sendCode,
@@ -318,6 +326,13 @@ import {
 
 import { parseText, ParseMode } from '../parser/index.js'
 
+export interface PluginOptions {
+  root: string
+  include?: string[]
+  exclude?: string[]
+  enabled?: boolean
+}
+
 export interface ClientOptions {
   name?: string
   apiId: number
@@ -338,6 +353,8 @@ export interface ClientOptions {
   systemLangCode?: string
   langPack?: string
   langCode?: string
+  plugins?: PluginOptions
+  logLevel?: LogLevelInput
 }
 
 export class Client {
@@ -357,6 +374,8 @@ export class Client {
   public systemLangCode: string
   public langPack: string
   public langCode: string
+  public plugins?: PluginOptions
+  private _pluginsLoaded: boolean = false
 
   public storage: Storage
   public connection?: Connection
@@ -385,6 +404,11 @@ export class Client {
     this.systemLangCode = options.systemLangCode ?? 'en'
     this.langPack = options.langPack ?? ''
     this.langCode = options.langCode ?? 'en'
+    this.plugins = options.plugins
+
+    if (options.logLevel !== undefined) {
+      Logger.setLevel(options.logLevel)
+    }
 
     if (options.storage) {
       this.storage = options.storage
@@ -409,6 +433,10 @@ export class Client {
    */
   public async connect(): Promise<void> {
     if (this.isConnected) return
+
+    if (this.plugins && !this._pluginsLoaded) {
+      await this.loadPlugins()
+    }
 
     await this.storage.open()
     await this.storage.setApiId(this.apiId)
@@ -644,6 +672,80 @@ export class Client {
     this.dispatcher.addHandler(handler, group)
   }
 
+  /**
+   * Load Smart Plugins automatically from a specified root directory.
+   */
+  public async loadPlugins(options?: PluginOptions): Promise<number> {
+    const pluginOpts = options ?? this.plugins
+    if (!pluginOpts || pluginOpts.enabled === false) return 0
+
+    const rootDir = resolve(process.cwd(), pluginOpts.root)
+    if (!existsSync(rootDir)) {
+      console.warn(`[Nectogram] Plugins root directory "${rootDir}" does not exist.`)
+      return 0
+    }
+
+    const findFiles = (dir: string): string[] => {
+      const results: string[] = []
+      const list = readdirSync(dir)
+      for (const file of list) {
+        const fullPath = join(dir, file)
+        const stat = statSync(fullPath)
+        if (stat && stat.isDirectory()) {
+          results.push(...findFiles(fullPath))
+        } else if (/\.(ts|js|mjs|cjs)$/.test(file) && !file.endsWith('.d.ts')) {
+          results.push(fullPath)
+        }
+      }
+      return results
+    }
+
+    const files = findFiles(rootDir)
+    let loadedCount = 0
+
+    for (const filePath of files) {
+      if (pluginOpts.exclude) {
+        const matchesExclude = pluginOpts.exclude.some((ex) => filePath.includes(ex))
+        if (matchesExclude) continue
+      }
+      if (pluginOpts.include && pluginOpts.include.length > 0) {
+        const matchesInclude = pluginOpts.include.some((inc) => filePath.includes(inc))
+        if (!matchesInclude) continue
+      }
+
+      try {
+        const modUrl = pathToFileURL(filePath).href
+        const mod = await import(modUrl)
+
+        if (typeof mod.default === 'function') {
+          await mod.default(this)
+          loadedCount++
+        } else if (typeof mod.setup === 'function') {
+          await mod.setup(this)
+          loadedCount++
+        }
+
+        for (const [key, val] of Object.entries(mod)) {
+          if (key === 'default' || key === 'setup') continue
+          if (val instanceof Handler) {
+            this.addHandler(val)
+            loadedCount++
+          } else if (Array.isArray(val) && val.every((item) => item instanceof Handler)) {
+            for (const h of val) {
+              this.addHandler(h)
+              loadedCount++
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`[Nectogram] Error loading plugin file "${filePath}":`, err)
+      }
+    }
+
+    this._pluginsLoaded = true
+    return loadedCount
+  }
+
   public removeHandler(handler: Handler, group: number = 0): void {
     this.dispatcher.removeHandler(handler, group)
   }
@@ -830,6 +932,8 @@ export class Client {
   public setPersonalChannel = setPersonalChannel.bind(this)
   public getDefaultEmojiStatuses = getDefaultEmojiStatuses.bind(this)
   public saveFile = saveFile.bind(this)
+  public uploadFile = uploadFile.bind(this)
+  public downloadMedia = downloadMedia.bind(this)
   public sendCode = sendCode.bind(this)
   public resendCode = resendCode.bind(this)
   public signIn = signIn.bind(this)

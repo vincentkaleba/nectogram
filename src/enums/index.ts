@@ -29,6 +29,7 @@ export enum BusinessSchedule {
 export enum ButtonStyle {
   DEFAULT = 'default',
   PRIMARY = 'primary',
+  SECONDARY = 'secondary',
   DANGER = 'danger',
   SUCCESS = 'success',
 }

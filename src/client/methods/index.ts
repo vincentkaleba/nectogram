@@ -43,6 +43,7 @@ export * from './users/userUtils.js'
 export * from './users/usersExtended.js'
 
 export * from './advanced/saveFile.js'
+export * from './advanced/downloadMedia.js'
 export * from './advanced/advancedMethods.js'
 
 export * from './premium/premiumMethods.js'

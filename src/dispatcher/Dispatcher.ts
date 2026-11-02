@@ -322,7 +322,7 @@ export class Dispatcher {
       update instanceof raw.types.UpdateEditChannelMessage
     ) {
       if (update.message) {
-        const parsed = Message._parse(update.message, users, chats)
+        const parsed = Message._parse(update.message, users, chats, this.client)
         return { parsedUpdate: parsed, handlerClass: EditedMessageHandler }
       }
     } else if (
@@ -334,7 +334,7 @@ export class Dispatcher {
       update instanceof raw.types.UpdateNewScheduledMessage
     ) {
       if (update.message) {
-        const parsed = Message._parse(update.message, users, chats)
+        const parsed = Message._parse(update.message, users, chats, this.client)
         return { parsedUpdate: parsed, handlerClass: MessageHandler }
       }
     } else if (qual === 'types.UpdateShortMessage' || update instanceof raw.types.UpdateShortMessage) {
@@ -359,7 +359,7 @@ export class Dispatcher {
         undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
         update.ttl_period
       )
-      const parsed = Message._parse(rawMsg, users, chats)
+      const parsed = Message._parse(rawMsg, users, chats, this.client)
       return { parsedUpdate: parsed, handlerClass: MessageHandler }
     } else if (qual === 'types.UpdateShortChatMessage' || update instanceof raw.types.UpdateShortChatMessage) {
       const rawMsg = new raw.types.Message(
@@ -383,7 +383,7 @@ export class Dispatcher {
         undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
         update.ttl_period
       )
-      const parsed = Message._parse(rawMsg, users, chats)
+      const parsed = Message._parse(rawMsg, users, chats, this.client)
       return { parsedUpdate: parsed, handlerClass: MessageHandler }
     } else if (
       qual === 'types.UpdateBotCallbackQuery' ||
@@ -391,7 +391,7 @@ export class Dispatcher {
       update instanceof raw.types.UpdateBotCallbackQuery ||
       update instanceof raw.types.UpdateInlineBotCallbackQuery
     ) {
-      const parsed = CallbackQuery._parse(update as any, users)
+      const parsed = CallbackQuery._parse(update as any, users, chats, this.client)
       return { parsedUpdate: parsed, handlerClass: CallbackQueryHandler }
     }
 

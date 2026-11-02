@@ -222,11 +222,51 @@ export class Session extends EventEmitter {
     })
   }
 
+  private _pendingAcks: bigint[] = []
+
+  public ackMessage(msgId: bigint): void {
+    if (!msgId) return
+    this._pendingAcks.push(msgId)
+    if (this._pendingAcks.length >= 10) {
+      this.flushAcks().catch(() => {})
+    }
+  }
+
+  public async flushAcks(): Promise<void> {
+    if (this._pendingAcks.length === 0 || !this.connection.isConnected) return
+    const idsToAck = [...this._pendingAcks]
+    this._pendingAcks = []
+
+    try {
+      const writer = new BinaryWriter()
+      writer.writeInt32(0x62d6b459)
+      writer.writeInt32(0x1cb5e415)
+      writer.writeInt32(idsToAck.length)
+      for (const id of idsToAck) {
+        writer.writeInt64(id)
+      }
+      const payload = writer.toBuffer()
+
+      const ackTLObject = {
+        CONSTRUCTOR_ID: 0x62d6b459,
+        write: () => payload,
+      }
+
+      const ackMsgId = this.getNewMessageId()
+      const message = new Message(ackTLObject as any, ackMsgId, this.seqNo * 2, payload.length)
+      const packed = this.pack(message)
+      await this.connection.send(packed)
+    } catch {}
+  }
+
   /**
    * Handle incoming raw encrypted payload from Connection.
    */
   private onEncryptedPayload(chunk: Buffer): void {
     const message = this.unpack(chunk)
+    if (message.msgId) {
+      this.ackMessage(message.msgId)
+    }
     this.handleMessage(message.body, message.msgId)
   }
 

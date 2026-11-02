@@ -39,9 +39,18 @@ export const DEFAULT_TEST_DCS: Record<number, DCOption> = {
   3: { id: 3, ip: '149.154.175.117', port: 443 },
 }
 
+export const DEFAULT_MEDIA_DCS: Record<number, DCOption> = {
+  1: { id: 1, ip: '149.154.175.53', port: 443 },
+  2: { id: 2, ip: '149.154.167.222', port: 443 },
+  3: { id: 3, ip: '149.154.175.100', port: 443 },
+  4: { id: 4, ip: '149.154.165.136', port: 443 },
+  5: { id: 5, ip: '91.108.56.160', port: 443 },
+}
+
 export interface ConnectionOptions {
   dcId: number
   testMode?: boolean
+  isMedia?: boolean
   ip?: string
   port?: number
   transport?: TCP
@@ -67,7 +76,9 @@ export class Connection extends EventEmitter {
     this.dcId = options.dcId
     this.testMode = options.testMode ?? false
 
-    const defaultDcs = this.testMode ? DEFAULT_TEST_DCS : DEFAULT_PRODUCTION_DCS
+    const defaultDcs = this.testMode
+      ? DEFAULT_TEST_DCS
+      : (options.isMedia ? (DEFAULT_MEDIA_DCS[this.dcId] ? DEFAULT_MEDIA_DCS : DEFAULT_PRODUCTION_DCS) : DEFAULT_PRODUCTION_DCS)
     const defaultOption = defaultDcs[this.dcId] ?? { id: this.dcId, ip: '149.154.167.51', port: 443 }
 
     this.ip = options.ip ?? defaultOption.ip

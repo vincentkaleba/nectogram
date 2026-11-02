@@ -39,3 +39,8 @@ src/raw/types/
 src/raw/functions/
 src/raw/base/
 src/raw/all.ts
+
+# Generated downloads and bot runtime files
+downloads/
+renamer_db.json
+*.temp

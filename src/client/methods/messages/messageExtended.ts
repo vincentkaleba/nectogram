@@ -5,6 +5,7 @@
 import * as raw from '../../../raw/index.js'
 import type { Client } from '../../Client.js'
 import { PeerLike } from '../../PeerResolver.js'
+import { Message } from '../../../types/messages_and_media/Message.js'
 
 /**
  * Get messages from a chat by IDs (up to 200 at a time).
@@ -30,7 +31,28 @@ export async function getMessages(
     res = await this.invoke(new raw.functions.messages.GetMessages(inputIds))
   }
 
-  return res?.messages ?? []
+  const rawMessages = res?.messages ?? []
+  const usersMap = new Map<bigint, any>()
+  if (res?.users) {
+    for (const u of res.users) {
+      const uId = BigInt(u.id ?? u.user_id)
+      usersMap.set(uId, u)
+    }
+  }
+  const chatsMap = new Map<bigint, any>()
+  if (res?.chats) {
+    for (const c of res.chats) {
+      const cId = BigInt(c.id ?? c.channel_id ?? c.chat_id)
+      chatsMap.set(cId, c)
+    }
+  }
+
+  return rawMessages.map((m: any) => {
+    if (m && (m instanceof raw.types.Message || m?.QUALNAME === 'types.Message')) {
+      return Message._parse(m, usersMap, chatsMap, this)
+    }
+    return m
+  })
 }
 
 /**

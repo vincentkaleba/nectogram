@@ -397,4 +397,83 @@ export const Filters = {
       return false
     }, 'chat(...)')
   },
+
+  /**
+   * Filter callback query updates.
+   */
+  callbackQuery: createFilter((_, update) => {
+    return Boolean(
+      update &&
+        (update.constructor?.name === 'CallbackQuery' ||
+          update.QUALNAME === 'CallbackQuery' ||
+          (update.id && update.fromUser && update.chatInstance !== undefined))
+    )
+  }, 'callbackQuery'),
+
+  /**
+   * Filter callback query updates by callback data string or array of strings.
+   */
+  callbackData: (data: string | string[] | RegExp): Filter => {
+    if (data instanceof RegExp) {
+      return Filters.callbackDataRegex(data)
+    }
+    const dataList = Array.isArray(data) ? data : [data]
+    return createFilter((_, update) => {
+      const queryData = update?.data
+      if (typeof queryData !== 'string') return false
+      return dataList.includes(queryData)
+    }, `callbackData(${Array.isArray(data) ? data.join(',') : data})`)
+  },
+
+  /**
+   * Filter callback query updates by regex pattern matching data.
+   */
+  callbackDataRegex: (pattern: string | RegExp, flags?: string): Filter => {
+    const rgx = typeof pattern === 'string' ? new RegExp(pattern, flags) : pattern
+    return createFilter((_, update) => {
+      const queryData = update?.data
+      if (typeof queryData !== 'string') return false
+      const match = queryData.match(rgx)
+      if (match) {
+        update.matches = Array.from(queryData.matchAll(new RegExp(rgx.source, rgx.flags.includes('g') ? rgx.flags : rgx.flags + 'g')))
+        return true
+      }
+      return false
+    }, `callbackDataRegex(${rgx.source})`)
+  },
+
+  /**
+   * Filter messages replying to a message (optionally checking reply message ID).
+   */
+  replyTo: (replyToMessageId?: number): Filter => {
+    return createFilter((_, update) => {
+      const msg = _messageOf(update)
+      if (!msg) return false
+      const replyId = msg.replyToMessageId ?? msg.reply_to_message_id
+      if (!replyId) return false
+      if (replyToMessageId !== undefined) {
+        return replyId === replyToMessageId
+      }
+      return true
+    }, replyToMessageId ? `replyTo(${replyToMessageId})` : 'replyTo')
+  },
+
+  /**
+   * Filter messages that contain any type of media attachment.
+   */
+  media: createFilter((_, update) => {
+    const msg = _messageOf(update)
+    if (!msg) return false
+    return Boolean(
+      msg.photo ||
+        msg.video ||
+        msg.audio ||
+        msg.document ||
+        msg.sticker ||
+        msg.animation ||
+        msg.voice ||
+        msg.videoNote ||
+        msg.video_note
+    )
+  }, 'media'),
 }

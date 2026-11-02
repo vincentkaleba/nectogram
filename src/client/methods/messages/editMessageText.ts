@@ -90,7 +90,7 @@ export async function editMessageText(
   }
 
   if (rawMessage) {
-    return Message._parse(rawMessage)
+    return Message._parse(rawMessage, undefined, undefined, this)
   }
 
   throw new Error('editMessageText: Failed to parse edited message update from server response')

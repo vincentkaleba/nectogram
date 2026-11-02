@@ -17,17 +17,24 @@
 //  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
 
 import * as raw from '../../../raw/index.js'
-import { Message, InlineKeyboardMarkup, RichMessage } from '../../../types/index.js'
+import { Message, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply, RichMessage } from '../../../types/index.js'
 import { parseText, ParseMode } from '../../../parser/index.js'
 import type { Client } from '../../Client.js'
 import type { PeerLike } from '../../PeerResolver.js'
 
 export interface SendMessageOptions {
   replyToMessageId?: number
-  replyMarkup?: InlineKeyboardMarkup
+  replyMarkup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | any
   parseMode?: ParseMode
   entities?: raw.base.MessageEntity[]
   richMessage?: RichMessage | raw.base.InputRichMessage
+}
+
+function resolveReplyMarkup(markup: any): raw.base.ReplyMarkup | undefined {
+  if (!markup) return undefined
+  if (typeof markup.writeTL === 'function') return markup.writeTL()
+  if (typeof markup.toRaw === 'function') return markup.toRaw()
+  return markup
 }
 
 export async function sendMessage(
@@ -54,10 +61,7 @@ export async function sendMessage(
     replyTo = new raw.types.InputReplyToMessage(options.replyToMessageId)
   }
 
-  let replyMarkup: raw.base.ReplyMarkup | undefined
-  if (options?.replyMarkup) {
-    replyMarkup = options.replyMarkup.writeTL()
-  }
+  const replyMarkup = resolveReplyMarkup(options?.replyMarkup)
 
   let rawRichMessage: raw.base.InputRichMessage | undefined
   if (options?.richMessage) {
@@ -134,7 +138,7 @@ export async function sendMessage(
   }
 
   if (rawMessage) {
-    return Message._parse(rawMessage, usersMap, chatsMap)
+    return Message._parse(rawMessage, usersMap, chatsMap, this)
   }
 
   throw new Error('sendMessage: Failed to parse sent message update from server response')

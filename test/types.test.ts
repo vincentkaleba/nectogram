@@ -1,22 +1,8 @@
 //  Nectogram - Telegram MTProto API Client Library for Node.js
 //  Copyright (C) 2024-present Nectogram contributors
-//
-//  This file is part of Nectogram.
-//
-//  Nectogram is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU Lesser General Public License as published
-//  by the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
-//
-//  Nectogram is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU Lesser General Public License for more details.
-//
-//  You should have received a copy of the GNU Lesser General Public License
-//  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
+//  LGPL-3.0-or-later
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import * as raw from '../src/raw/index.js'
 import {
   User,
@@ -24,8 +10,17 @@ import {
   Message,
   CallbackQuery,
   InlineKeyboardButton,
-  InlineKeyboardMarkup
-} from '../src/types/index.js'
+  InlineKeyboardMarkup,
+  ReplyKeyboardMarkup,
+  ReplyKeyboardRemove,
+  ForceReply,
+  Document,
+  Video,
+  Audio,
+  Photo,
+  MessageEntity,
+  Filters,
+} from '../src/index.js'
 
 describe('High-Level Types Module', () => {
   describe('User', () => {
@@ -62,7 +57,7 @@ describe('High-Level Types Module', () => {
         false, // bot_can_manage_bots
         false, // bot_guestchat
         false, // bot_guard
-        999n,  // access_hash
+        999n, // access_hash
         'John', // first_name
         'Doe', // last_name
         'johndoe', // username
@@ -100,7 +95,7 @@ describe('High-Level Types Module', () => {
     })
   })
 
-  describe('InlineKeyboards', () => {
+  describe('Keyboards', () => {
     it('should serialize InlineKeyboardMarkup to Telegram TL ReplyInlineMarkup', () => {
       const markup = new InlineKeyboardMarkup([
         [
@@ -116,24 +111,179 @@ describe('High-Level Types Module', () => {
       expect(tl.rows[0].buttons[0].type_).toBeInstanceOf(raw.types.InlineButtonTypeUrl)
       expect(tl.rows[0].buttons[1].type_).toBeInstanceOf(raw.types.InlineButtonTypeCallback)
     })
+
+    it('should serialize ReplyKeyboardMarkup to Telegram TL ReplyKeyboardMarkup', () => {
+      const markup = new ReplyKeyboardMarkup({
+        keyboard: [['Option 1', 'Option 2']],
+        resizeKeyboard: true,
+      })
+
+      expect(markup.resize_keyboard).toBe(true)
+      const tl = markup.toRaw()
+      expect(tl).toBeInstanceOf(raw.types.ReplyKeyboardMarkup)
+      expect(tl.resize).toBe(true)
+      expect(tl.rows.length).toBe(1)
+      expect(tl.rows[0].buttons.length).toBe(2)
+    })
+
+    it('should serialize ReplyKeyboardRemove to Telegram TL ReplyKeyboardHide', () => {
+      const remove = new ReplyKeyboardRemove(true)
+      expect(remove.remove_keyboard).toBe(true)
+      const tl = remove.toRaw()
+      expect(tl).toBeInstanceOf(raw.types.ReplyKeyboardHide)
+      expect(tl.selective).toBe(true)
+    })
+
+    it('should serialize ForceReply to Telegram TL ReplyKeyboardForceReply', () => {
+      const force = new ForceReply({ selective: true, inputFieldPlaceholder: 'Reply here...' })
+      expect(force.force_reply).toBe(true)
+      expect(force.input_field_placeholder).toBe('Reply here...')
+      const tl = force.toRaw()
+      expect(tl).toBeInstanceOf(raw.types.ReplyKeyboardForceReply)
+      expect(tl.selective).toBe(true)
+      expect(tl.placeholder).toBe('Reply here...')
+    })
   })
 
-  describe('CallbackQuery', () => {
-    it('should parse raw UpdateBotCallbackQuery into CallbackQuery instance', () => {
-      const rawUpdate = new raw.types.UpdateBotCallbackQuery(
-        9999n, // query_id
-        12345n, // user_id
-        new raw.types.PeerUser(12345n), // peer
-        100, // msg_id
-        888n, // chat_instance
-        Buffer.from('btn_click', 'utf8') // data
-      )
+  describe('Media & Message Types', () => {
+    it('should expose media objects and snake_case getters', () => {
+      const doc = new Document({
+        fileId: 'doc123',
+        fileName: 'report.pdf',
+        fileSize: 2048,
+        mimeType: 'application/pdf',
+      })
 
-      const cb = CallbackQuery._parse(rawUpdate)
-      expect(cb.id).toBe('9999')
-      expect(cb.fromUser.id).toBe(12345n)
-      expect(cb.data).toBe('btn_click')
-      expect(cb.chatInstance).toBe(888n)
+      expect(doc.file_id).toBe('doc123')
+      expect(doc.file_name).toBe('report.pdf')
+      expect(doc.file_size).toBe(2048)
+      expect(doc.mime_type).toBe('application/pdf')
+
+      const video = new Video({
+        fileId: 'vid123',
+        fileName: 'video.mp4',
+        fileSize: 1048576,
+        width: 1920,
+        height: 1080,
+        duration: 60,
+      })
+      expect(video.file_id).toBe('vid123')
+      expect(video.file_size).toBe(1048576)
+      expect(video.duration).toBe(60)
+
+      const audio = new Audio({
+        fileId: 'aud123',
+        fileName: 'song.mp3',
+        fileSize: 512000,
+        performer: 'Artist',
+        title: 'Track 1',
+      })
+      expect(audio.file_id).toBe('aud123')
+      expect(audio.performer).toBe('Artist')
+
+      const photo = new Photo({
+        fileId: 'pic123',
+        fileSize: 256000,
+        width: 800,
+        height: 600,
+      })
+      expect(photo.file_id).toBe('pic123')
+      expect(photo.file_size).toBe(256000)
+    })
+
+    it('should handle Message bound methods: reply, edit, delete', async () => {
+      const mockClient = {
+        sendMessage: vi.fn().mockResolvedValue({ id: 101 }),
+        editMessageText: vi.fn().mockResolvedValue({ id: 100 }),
+        deleteMessages: vi.fn().mockResolvedValue(true),
+        downloadMedia: vi.fn().mockResolvedValue(Buffer.from('test')),
+      }
+
+      const msg = new Message({
+        id: 100,
+        chat: new Chat({ id: 12345n, type: 'private' }),
+        date: new Date(),
+        text: 'Hello world',
+        client: mockClient,
+      })
+
+      expect(msg.from_user).toBeUndefined()
+      expect(msg.reply_to_message_id).toBeUndefined()
+
+      await msg.reply('Replying back')
+      expect(mockClient.sendMessage).toHaveBeenCalledWith(12345n, 'Replying back', { replyToMessageId: 100 })
+
+      await msg.edit('Edited text')
+      expect(mockClient.editMessageText).toHaveBeenCalledWith(12345n, 100, 'Edited text', undefined)
+
+      await msg.delete()
+      expect(mockClient.deleteMessages).toHaveBeenCalledWith(12345n, [100])
+
+      await msg.download()
+      expect(mockClient.downloadMedia).toHaveBeenCalledWith(msg, undefined)
+    })
+
+    it('should handle CallbackQuery bound methods: answer, editMessage, deleteMessage', async () => {
+      const mockClient = {
+        answerCallbackQuery: vi.fn().mockResolvedValue(true),
+        editMessageText: vi.fn().mockResolvedValue({ id: 200 }),
+        deleteMessages: vi.fn().mockResolvedValue(true),
+      }
+
+      const msg = new Message({
+        id: 200,
+        chat: new Chat({ id: 12345n, type: 'private' }),
+        date: new Date(),
+        text: 'Original message',
+        client: mockClient,
+      })
+
+      const cb = new CallbackQuery({
+        id: '9999',
+        fromUser: new User({ id: 555n }),
+        message: msg,
+        data: 'btn_action',
+        chatInstance: 777n,
+        client: mockClient,
+      })
+
+      expect(cb.from_user.id).toBe(555n)
+      expect(cb.chat_instance).toBe(777n)
+
+      await cb.answer('Done!')
+      expect(mockClient.answerCallbackQuery).toHaveBeenCalledWith('9999', { text: 'Done!' })
+
+      await cb.editMessage('New content')
+      expect(mockClient.editMessageText).toHaveBeenCalledWith(12345n, 200, 'New content', undefined)
+
+      await cb.deleteMessage()
+      expect(mockClient.deleteMessages).toHaveBeenCalledWith(12345n, [200])
+    })
+  })
+
+  describe('New Filters', () => {
+    it('should test Filters.media and Filters.callbackData', async () => {
+      const msg = new Message({
+        id: 1,
+        chat: new Chat({ id: 100n, type: 'private' }),
+        date: new Date(),
+        document: new Document({ fileId: 'doc1' }),
+      })
+
+      const isMedia = await Filters.media({}, msg)
+      expect(isMedia).toBe(true)
+
+      const cb = new CallbackQuery({
+        id: '1',
+        fromUser: new User({ id: 2n }),
+        data: 'confirm_btn',
+      })
+
+      const isCbData = await Filters.callbackData('confirm_btn')({}, cb)
+      expect(isCbData).toBe(true)
+
+      const isCbDataWrong = await Filters.callbackData('cancel_btn')({}, cb)
+      expect(isCbDataWrong).toBe(false)
     })
   })
 })

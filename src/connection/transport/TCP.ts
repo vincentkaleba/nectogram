@@ -59,11 +59,26 @@ export abstract class TCP extends EventEmitter {
       const socket = new Socket()
       this.socket = socket
 
+      // Timeout only for initial connect phase — disabled after connection
       socket.setTimeout(this.timeout)
 
       const onConnect = async () => {
         cleanup()
         this._connected = true
+
+        // Disable idle timeout after connection (prevents server-side disconnect)
+        socket.setTimeout(0)
+
+        // Enable TCP keepalive: send keepalive probes every 10s
+        socket.setKeepAlive(true, 10_000)
+
+        // Persistent error handler (after connect phase)
+        socket.on('error', (err: Error) => {
+          this._connected = false
+          // Emit so the Connection/Session can react
+          this.emit('error', err)
+        })
+
         try {
           await this.onConnected()
           resolve()

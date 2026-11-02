@@ -37,7 +37,7 @@ export async function getChatHistory(
   )
 
   if ('messages' in res) {
-    return res.messages.map((m: any) => Message._parse(m))
+    return res.messages.map((m: any) => Message._parse(m, undefined, undefined, this))
   }
   return []
 }

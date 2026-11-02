@@ -57,6 +57,13 @@ export abstract class TCPObfuscated extends TCP {
   protected decipher: Decipher | null = null
   protected abstract obfuscateTag: Buffer
 
+  /** Reset cipher state on close so we never reuse a dead cipher */
+  public override close(): void {
+    this.cipher = null
+    this.decipher = null
+    super.close()
+  }
+
   protected override async onConnected(): Promise<void> {
     if (!this.socket) return
 
@@ -97,17 +104,32 @@ export abstract class TCPObfuscated extends TCP {
   }
 
   protected writeEncrypted(data: Buffer): Promise<void> {
-    if (!this.socket || !this._connected || !this.cipher) {
-      throw new Error('TCPObfuscated: socket or cipher not ready')
+    if (!this.socket || !this._connected || !this.cipher || this.socket.destroyed) {
+      this._connected = false
+      return Promise.reject(new Error('TCPObfuscated: socket or cipher not ready'))
     }
 
-    const encrypted = this.cipher.update(data)
-    return new Promise((resolve, reject) => {
-      this.socket!.write(encrypted, (err) => {
-        if (err) reject(err)
-        else resolve()
+    try {
+      const encrypted = this.cipher.update(data)
+      return new Promise((resolve, reject) => {
+        try {
+          this.socket!.write(encrypted, (err) => {
+            if (err) {
+              this._connected = false
+              reject(err)
+            } else {
+              resolve()
+            }
+          })
+        } catch (err) {
+          this._connected = false
+          reject(err)
+        }
       })
-    })
+    } catch (err) {
+      this._connected = false
+      return Promise.reject(err)
+    }
   }
 
   protected decryptChunk(chunk: Buffer): Buffer {

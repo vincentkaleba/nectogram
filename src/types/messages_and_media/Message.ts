@@ -1,24 +1,16 @@
 //  Nectogram - Telegram MTProto API Client Library for Node.js
 //  Copyright (C) 2024-present Nectogram contributors
-//
-//  This file is part of Nectogram.
-//
-//  Nectogram is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU Lesser General Public License as published
-//  by the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
-//
-//  Nectogram is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU Lesser General Public License for more details.
-//
-//  You should have received a copy of the GNU Lesser General Public License
-//  along with Nectogram.  If not, see <http://www.gnu.org/licenses/>.
+//  LGPL-3.0-or-later
 
 import * as raw from '../../raw/index.js'
 import { User } from '../user_and_chats/User.js'
 import { Chat } from '../user_and_chats/Chat.js'
+import { MessageEntity } from './MessageEntity.js'
+import { Document } from './Document.js'
+import { Video } from './Video.js'
+import { Audio } from './Audio.js'
+import { Photo } from './Photo.js'
+import { ForceReply } from '../bots_and_keyboards/ForceReply.js'
 
 export interface MessageOptions {
   id: number
@@ -26,8 +18,17 @@ export interface MessageOptions {
   chat: Chat
   date: Date
   text?: string
+  caption?: string
   replyToMessageId?: number
+  document?: Document
+  video?: Video
+  audio?: Audio
+  photo?: Photo
+  entities?: MessageEntity[]
+  captionEntities?: MessageEntity[]
+  replyMarkup?: any
   raw?: raw.types.Message
+  client?: any
 }
 
 /**
@@ -39,10 +40,19 @@ export class Message {
   public readonly chat: Chat
   public readonly date: Date
   public readonly text?: string
+  public readonly caption?: string
   public readonly replyToMessageId?: number
+  public readonly document?: Document
+  public readonly video?: Video
+  public readonly audio?: Audio
+  public readonly photo?: Photo
+  public readonly entities?: MessageEntity[]
+  public readonly captionEntities?: MessageEntity[]
+  public readonly replyMarkup?: any
   public readonly raw?: raw.types.Message
   public command?: string[]
   public matches?: any[]
+  public _client?: any
 
   constructor(options: MessageOptions) {
     this.id = options.id
@@ -50,8 +60,77 @@ export class Message {
     this.chat = options.chat
     this.date = options.date
     this.text = options.text
+    this.caption = options.caption
     this.replyToMessageId = options.replyToMessageId
+    this.document = options.document
+    this.video = options.video
+    this.audio = options.audio
+    this.photo = options.photo
+    this.entities = options.entities
+    this.captionEntities = options.captionEntities
+    this.replyMarkup = options.replyMarkup
     this.raw = options.raw
+    this._client = options.client
+  }
+
+  // Pyrogram snake_case aliases
+  public get from_user(): User | undefined {
+    return this.fromUser
+  }
+  public get reply_to_message_id(): number | undefined {
+    return this.replyToMessageId
+  }
+  public get caption_entities(): MessageEntity[] | undefined {
+    return this.captionEntities
+  }
+  public get reply_markup(): any {
+    return this.replyMarkup
+  }
+
+  /**
+   * Reply to this message.
+   */
+  public async reply(text: string, options?: any): Promise<Message> {
+    if (!this._client) {
+      throw new Error('Message: Cannot call reply() because client reference is missing.')
+    }
+    return await this._client.sendMessage(this.chat.id, text, {
+      replyToMessageId: this.id,
+      ...options,
+    })
+  }
+
+  /**
+   * Edit this message text.
+   */
+  public async edit(text: string, options?: any): Promise<Message> {
+    if (!this._client) {
+      throw new Error('Message: Cannot call edit() because client reference is missing.')
+    }
+    return await this._client.editMessageText(this.chat.id, this.id, text, options)
+  }
+
+  /**
+   * Delete this message.
+   */
+  public async delete(): Promise<boolean> {
+    if (!this._client) {
+      throw new Error('Message: Cannot call delete() because client reference is missing.')
+    }
+    return await this._client.deleteMessages(this.chat.id, [this.id])
+  }
+
+  /**
+   * Download media attached to this message.
+   */
+  public async download(options?: any): Promise<string | Buffer> {
+    if (!this._client) {
+      throw new Error('Message: Cannot call download() because client reference is missing.')
+    }
+    if (typeof this._client.downloadMedia === 'function') {
+      return await this._client.downloadMedia(this, options)
+    }
+    throw new Error('Client: downloadMedia method is not available on client.')
   }
 
   /**
@@ -60,7 +139,8 @@ export class Message {
   public static _parse(
     rawMsg: raw.types.Message | any,
     usersMap?: Map<bigint, User>,
-    chatsMap?: Map<bigint, Chat>
+    chatsMap?: Map<bigint, Chat>,
+    client?: any
   ): Message {
     let fromUserId: bigint | undefined
     const fromId = rawMsg.from_id || rawMsg.fromId
@@ -118,9 +198,72 @@ export class Message {
 
     let replyToMessageId: number | undefined
     const replyToHeader = rawMsg.reply_to || rawMsg.replyTo
-    const replyToQual = replyToHeader?.QUALNAME || replyToHeader?.constructor?.name
-    if (replyToHeader && (replyToHeader instanceof raw.types.MessageReplyHeader || replyToQual === 'types.MessageReplyHeader')) {
-      replyToMessageId = replyToHeader.reply_to_msg_id ?? replyToHeader.replyToMsgId
+    if (replyToHeader) {
+      replyToMessageId = replyToHeader.reply_to_msg_id ?? replyToHeader.replyToMsgId ?? replyToHeader.reply_to_top_id ?? replyToHeader.replyToTopId
+    }
+
+    let document: Document | undefined
+    let video: Video | undefined
+    let audio: Audio | undefined
+    let photo: Photo | undefined
+    let caption: string | undefined
+
+    const rawMedia = rawMsg.media
+    const mediaQual = rawMedia?.QUALNAME || rawMedia?.constructor?.name || ''
+    if (rawMedia) {
+      if (mediaQual.includes('MessageMediaDocument')) {
+        const doc = rawMedia.document
+        if (doc && (doc instanceof raw.types.Document || doc?.QUALNAME === 'types.Document')) {
+          caption = rawMedia.caption || rawMsg.message
+          // Check attributes to distinguish Video, Audio, Document
+          let isVideo = false
+          let isAudio = false
+          if (doc.attributes) {
+            for (const attr of doc.attributes) {
+              const aQual = attr?.QUALNAME || attr?.constructor?.name || ''
+              if (aQual.includes('DocumentAttributeVideo')) isVideo = true
+              else if (aQual.includes('DocumentAttributeAudio')) isAudio = true
+            }
+          }
+          if (isVideo) video = Video._parse(doc)
+          else if (isAudio) audio = Audio._parse(doc)
+          else document = Document._parse(doc)
+        }
+      } else if (mediaQual.includes('MessageMediaPhoto')) {
+        const p = rawMedia.photo
+        if (p && (p instanceof raw.types.Photo || p?.QUALNAME === 'types.Photo')) {
+          caption = rawMedia.caption || rawMsg.message
+          photo = Photo._parse(p)
+        }
+      }
+    }
+
+    // Entities parsing
+    let entities: MessageEntity[] | undefined
+    let captionEntities: MessageEntity[] | undefined
+    const rawEntities = rawMsg.entities
+    if (rawEntities && Array.isArray(rawEntities) && rawEntities.length > 0) {
+      const parsedEnts = rawEntities.map((e) => MessageEntity._parse(e, usersMap))
+      if (caption) {
+        captionEntities = parsedEnts
+      } else {
+        entities = parsedEnts
+      }
+    }
+
+    // ReplyMarkup parsing
+    let replyMarkup: any
+    const rawMarkup = rawMsg.reply_markup || rawMsg.replyMarkup
+    const markupQual = rawMarkup?.QUALNAME || rawMarkup?.constructor?.name || ''
+    if (rawMarkup) {
+      if (rawMarkup instanceof raw.types.ReplyKeyboardForceReply || markupQual.includes('ReplyKeyboardForceReply')) {
+        replyMarkup = new ForceReply({
+          selective: Boolean(rawMarkup.selective),
+          inputFieldPlaceholder: rawMarkup.placeholder,
+        })
+      } else if (rawMarkup instanceof ForceReply) {
+        replyMarkup = rawMarkup
+      }
     }
 
     return new Message({
@@ -128,9 +271,18 @@ export class Message {
       fromUser,
       chat,
       date: new Date((rawMsg.date ?? 0) * 1000),
-      text: rawMsg.message,
+      text: caption ? undefined : rawMsg.message,
+      caption,
       replyToMessageId,
+      document,
+      video,
+      audio,
+      photo,
+      entities,
+      captionEntities,
+      replyMarkup,
       raw: rawMsg,
+      client,
     })
   }
 }
