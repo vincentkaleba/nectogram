@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
-    "bot": "tsx examples/bot.ts",
+    "bot": "tsx examples/renamer_bot/bot.ts",
     "typecheck": "tsc --noEmit",
     "generate": "tsx compiler/tl-compiler.ts",
     "test": "vitest run",
