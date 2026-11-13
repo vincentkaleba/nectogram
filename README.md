@@ -4,7 +4,7 @@
 
 Nectogram brings Pyrogram's clean, developer-friendly API to the JavaScript ecosystem. It talks to Telegram directly over MTProto (not the HTTP Bot API), so it can drive both bots and user accounts with the full power of the Telegram API.
 
-> **Status:** pre-release (`v0.1.0`), under active development. APIs may change before 1.0, and the package is not yet published on npm.
+> **Status:** first pre-release (`v0.1.0`), under active development. APIs may change before 1.0, and the package is not yet published on npm.
 
 ## Features
 
@@ -29,7 +29,6 @@ Until the first npm release, install from source:
 ```bash
 git clone https://github.com/vincentkaleba/nectogram.git
 cd nectogram
-git checkout dev
 npm install
 npm run generate   # generate the raw TL classes from the schema
 npm run build
@@ -139,7 +138,7 @@ npm run build       # compile to dist/
 
 ## Contributing
 
-Issues and pull requests are welcome. Development happens on the `dev` branch.
+Issues and pull requests are welcome. Day-to-day development happens on the `dev` branch; `main` holds released code.
 
 ## Acknowledgements
 
