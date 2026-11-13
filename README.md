@@ -147,4 +147,4 @@ Nectogram's API design follows [Pyrogram](https://github.com/pyrogram/pyrogram) 
 
 ## License
 
-Released under the GNU Lesser General Public License. See [LICENSE](LICENSE).
+Released under the GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later). See [LICENSE](LICENSE) and [COPYING](COPYING) (the GPL-3.0 text, which the LGPL supplements).
